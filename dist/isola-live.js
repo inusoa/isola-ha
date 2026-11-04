@@ -3,7 +3,7 @@
  * Isola Live  = tablet / hub fisso (questa card: type: custom:isola-live)
  * Foto della casa dall'alto (render) + luci, robot, persone, sensori posizionati in pixel sulla foto.
  */
-const VERSION = '1.0.0-beta.1';
+const VERSION = '1.0.0-beta.2';
 const VQ = new URL(import.meta.url).search;
 
 // ------------------------------------------------------------------ configurazione predefinita

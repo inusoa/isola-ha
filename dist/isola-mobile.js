@@ -3,8 +3,10 @@
  * Isola Live  = tablet a parete o hub fisso (type: custom:isola-live)
  * Si configura da sola dalle aree e dai dispositivi di Home Assistant; ogni voce si può cambiare nel YAML della card.
  */
-const VERSION = '1.0.0-beta.1';
-const IMG_W = 1364, IMG_H = 768;
+const VERSION = '1.0.0-beta.2';
+let IMG_W = 1364, IMG_H = 768;
+// ritagli delle stanze sulla foto della casa: room_crops: { Soggiorno: [x0, y0, x1, y1] } (pixel della foto)
+const applyCrops = c => { const K = c.room_crops || {}; (c.rooms || []).forEach(r => { if (K[r.name]) r.crop = K[r.name]; }); return c; };
 const HIDE_EMPTY = new Set(['weather', 'night', 'tip', 'devices', 'energy', 'people', 'alerts', 's_access', 's_windows', 's_motion', 'r_more', 'y_prob', 'y_bat', 'y_maint', 'y_net', 'y_star', 'y_scripts', 'y_autos', 'y_events']);
 
 // ------------------------------------------------------------------ configurazione
@@ -58,6 +60,11 @@ function autoConfig(h) {
   const pvP = ids.find(id => dom(id) === 'sensor' && dc(id) === 'power' && /(pv|solar|solare|fotovolt|inverter).*(power|potenza)|(active|input)_power/.test(id) && !/batter|grid|rete|meter/.test(id));
   const pvT = ids.find(id => dom(id) === 'sensor' && dc(id) === 'energy' && /(pv|solar|solare|fotovolt|inverter|yield|rendimento).*(today|daily|giornalier|oggi|day)/.test(id));
   if (pvP) cfg.pv_power = pvP; if (pvT) cfg.pv_today = pvT;
+  // batteria di casa (accumulo): livello in % e potenza di carica/scarica
+  const BAT = /^sensor[.](home_?|casa_?)?(batter(y|ia|ies)|storage|accumulo)(_(casa|home|[0-9]+))?_/.source;
+  const bS = ids.find(id => new RegExp(BAT + '(soc|state_of_(charge|capacity)|livello|level|charge)$').test(id) && S[id].attributes?.unit_of_measurement === '%');
+  const bP = ids.find(id => new RegExp(BAT + '(power|potenza|charge_discharge_power)$').test(id) && dc(id) === 'power');
+  if (bS) cfg.battery_soc = bS; if (bP) cfg.battery_power = bP;
   // persone (con la batteria del telefono, se c'è l'app)
   cfg.people = ids.filter(id => dom(id) === 'person').map(id => {
     const p = { entity: id, name: name(id) };
@@ -556,7 +563,7 @@ class IsolaCard extends HTMLElement {
   getCardSize() { return 12; }
   setConfig(config) {
     this._user = config || {}; this._autoKey = null;
-    this._config = deepMerge(DEFAULTS, this._user);
+    this._config = applyCrops(deepMerge(DEFAULTS, this._user));
     this._cache = {};
     if (this._root) this._build();
   }
@@ -567,10 +574,13 @@ class IsolaCard extends HTMLElement {
       const key = Object.keys(h.states || {}).length + '|' + Object.keys(h.areas || {}).length;
       if (key !== this._autoKey) {
         this._autoKey = key;
-        try { this._config = deepMerge(deepMerge(DEFAULTS, autoConfig(h)), this._user); this._cache = {}; if (this._root) this._build(); }
+        try { this._config = applyCrops(deepMerge(deepMerge(DEFAULTS, autoConfig(h)), this._user)); this._cache = {}; if (this._root) this._build(); }
         catch (e) { console.error('isola: configurazione automatica', e); }
       }
     }
+    // dimensione vera della foto (servono i pixel per i ritagli delle stanze)
+    const im0 = this._config.image;
+    if (im0 && this._imgSrc !== im0) { this._imgSrc = im0; const im = new Image(); im.onload = () => { if (im.naturalWidth && (im.naturalWidth !== IMG_W || im.naturalHeight !== IMG_H)) { IMG_W = im.naturalWidth; IMG_H = im.naturalHeight; this._cache = {}; if (this._root) this._build(); } }; im.src = im0; }
     if (this._briWant) { const b = h.states[this._briWant.id]?.attributes?.brightness; if (b != null && Math.abs(Math.round(b / 2.55) - this._briWant.pct) <= 2) this._briDone(); }
     if (!this._root) this._build();
     if (this._live) this._live.hass = h;

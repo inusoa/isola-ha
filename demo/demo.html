@@ -42,6 +42,12 @@ add('sensor.lavatrice_machine_state', 'run', { friendly_name: 'Lavatrice' }, 'la
 add('sensor.lavatrice_completion_time', new Date(now.getTime() + 38 * 60000).toISOString(), { device_class: 'timestamp' }, 'lavanderia');
 add('sensor.inverter_active_power', '2350', { unit_of_measurement: 'W', device_class: 'power', friendly_name: 'Inverter potenza' });
 add('sensor.inverter_daily_yield', '9.8', { unit_of_measurement: 'kWh', device_class: 'energy', friendly_name: 'Produzione oggi' });
+add('sensor.batteria_casa_livello', '81', { unit_of_measurement: '%', device_class: 'battery', friendly_name: 'Batteria casa' });
+add('sensor.batteria_casa_potenza', '620', { unit_of_measurement: 'W', device_class: 'power', friendly_name: 'Batteria casa potenza' });
+add('sensor.lavatrice_potenza', '480', { unit_of_measurement: 'W', device_class: 'power', friendly_name: 'Lavatrice potenza' }, 'lavanderia');
+add('sensor.frigorifero_potenza', '95', { unit_of_measurement: 'W', device_class: 'power', friendly_name: 'Frigorifero' }, 'cucina');
+add('sensor.clima_camera_potenza', '640', { unit_of_measurement: 'W', device_class: 'power', friendly_name: 'Clima camera' }, 'camera');
+add('sensor.illuminazione_potenza', '120', { unit_of_measurement: 'W', device_class: 'power', friendly_name: 'Luci' });
 add('script.buonanotte', 'off', { friendly_name: 'Buonanotte' });
 add('script.esco_di_casa', 'off', { friendly_name: 'Esco di casa' });
 add('automation.luci_giardino_al_tramonto', 'on', { friendly_name: 'Luci giardino al tramonto', last_triggered: iso(300) });
@@ -59,8 +65,12 @@ const hass = {
   hassUrl: p => p,
 };
 await import('../dist/isola-mobile.js');
+await import('../dist/isola-live.js');
 const c = document.getElementById('c');
-c.setConfig({});
+c.setConfig({
+  image: './casa-demo.jpg',
+  room_crops: { Soggiorno: [510, 120, 900, 510], Cucina: [910, 120, 1130, 510], Camera: [240, 120, 500, 330], Cameretta: [410, 340, 640, 510], Bagno: [240, 340, 400, 510], Giardino: [760, 520, 1340, 740] },
+});
 c.hass = hass;
 window.__hass = hass;
 </script></body></html>
