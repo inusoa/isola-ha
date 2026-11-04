@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Isola Live · casa dimostrativa</title>
+<style>:root{--card-background-color:#fff;--primary-text-color:#1d2327;--secondary-text-color:#5d676f}html,body{margin:0;background:#e9ece8;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}</style></head>
+<body><isola-live id="c" style="display:block"></isola-live>
+<script type="module">
+// Casa dimostrativa "Famiglia Rossi": nessuna entità reale, solo per provare la configurazione automatica
+const now = new Date(), iso = m => new Date(Date.now() - m * 60000).toISOString();
+const S = {}, E = {};
+const add = (id, state, attrs = {}, area = null, opt = {}) => { S[id] = { entity_id: id, state, attributes: attrs, last_changed: opt.lc || iso(30), last_updated: iso(1) }; E[id] = { entity_id: id, area_id: area, device_id: null, hidden: false, entity_category: opt.cat || null }; };
+const areas = { soggiorno: 'Soggiorno', cucina: 'Cucina', camera: 'Camera', cameretta: 'Cameretta', bagno: 'Bagno', giardino: 'Giardino', lavanderia: 'Lavanderia' };
+const A = Object.fromEntries(Object.entries(areas).map(([k, v]) => [k, { area_id: k, name: v }]));
+add('sun.sun', 'above_horizon', { elevation: 32, azimuth: 205, next_setting: new Date(now.getTime() + 3 * 3600000).toISOString(), next_rising: new Date(now.getTime() + 15 * 3600000).toISOString(), friendly_name: 'Sole' });
+add('weather.casa_rossi', 'partlycloudy', { temperature: 18, humidity: 62, wind_speed: 12, friendly_name: 'Casa' });
+add('alarm_control_panel.allarme', 'disarmed', { friendly_name: 'Allarme' });
+add('lock.porta_ingresso', 'locked', { friendly_name: 'Porta d’ingresso' }, 'soggiorno');
+add('person.marco', 'home', { friendly_name: 'Marco', device_trackers: ['device_tracker.telefono_marco'] });
+add('person.giulia', 'Lavoro', { friendly_name: 'Giulia', device_trackers: ['device_tracker.telefono_giulia'] });
+add('sensor.telefono_marco_battery_level', '72', { unit_of_measurement: '%', device_class: 'battery' });
+add('sensor.telefono_giulia_battery_level', '41', { unit_of_measurement: '%', device_class: 'battery' });
+add('light.lampadario_soggiorno', 'on', { friendly_name: 'Lampadario', brightness: 180, supported_color_modes: ['brightness'] }, 'soggiorno');
+add('light.lampada_divano', 'off', { friendly_name: 'Lampada divano', supported_color_modes: ['onoff'] }, 'soggiorno');
+add('media_player.tv_soggiorno', 'off', { friendly_name: 'TV soggiorno' }, 'soggiorno');
+add('light.cucina_isola', 'off', { friendly_name: 'Luci isola', supported_color_modes: ['brightness'] }, 'cucina');
+add('switch.macchina_caffe', 'off', { friendly_name: 'Macchina del caffè' }, 'cucina');
+add('light.camera', 'off', { friendly_name: 'Luce camera', supported_color_modes: ['brightness'] }, 'camera');
+add('climate.clima_camera', 'cool', { friendly_name: 'Clima camera', current_temperature: 24.5, temperature: 23, hvac_action: 'cooling', hvac_modes: ['off', 'cool', 'heat', 'dry', 'fan_only', 'auto'] }, 'camera');
+add('light.cameretta', 'off', { friendly_name: 'Luce cameretta', supported_color_modes: ['onoff'] }, 'cameretta');
+add('sensor.cameretta_temperatura', '21.4', { friendly_name: 'Temperatura cameretta', unit_of_measurement: '°C', device_class: 'temperature' }, 'cameretta');
+add('light.bagno', 'off', { friendly_name: 'Luce bagno', supported_color_modes: ['onoff'] }, 'bagno');
+add('binary_sensor.finestra_soggiorno', 'off', { friendly_name: 'Finestra soggiorno', device_class: 'window' }, 'soggiorno');
+add('binary_sensor.finestra_cucina', 'on', { friendly_name: 'Finestra cucina', device_class: 'window' }, 'cucina');
+add('binary_sensor.movimento_soggiorno', 'off', { friendly_name: 'Movimento soggiorno', device_class: 'motion' }, 'soggiorno', { lc: iso(4) });
+add('switch.luci_giardino', 'on', { friendly_name: 'Luci giardino' }, 'giardino');
+add('camera.giardino', 'idle', { friendly_name: 'Giardino', entity_picture: './demo-cam.svg' }, 'giardino');
+add('binary_sensor.giardino_motion', 'off', { friendly_name: 'Movimento giardino', device_class: 'motion' }, 'giardino', { lc: iso(12) });
+add('vacuum.robi', 'cleaning', { friendly_name: 'Robi', battery_level: 64 }, 'soggiorno');
+add('sensor.robi_battery_level', '64', { unit_of_measurement: '%', device_class: 'battery', friendly_name: 'Robi batteria' }, 'soggiorno', { cat: 'diagnostic' });
+add('lawn_mower.erbetta', 'docked', { friendly_name: 'Erbetta' }, 'giardino');
+add('sensor.erbetta_battery', '100', { unit_of_measurement: '%', friendly_name: 'Erbetta batteria' }, 'giardino');
+add('sensor.lavatrice_machine_state', 'run', { friendly_name: 'Lavatrice' }, 'lavanderia');
+add('sensor.lavatrice_completion_time', new Date(now.getTime() + 38 * 60000).toISOString(), { device_class: 'timestamp' }, 'lavanderia');
+add('sensor.batteries_state_of_capacity', '81', { unit_of_measurement: '%', device_class: 'battery' });
+add('sensor.inverter_active_power', '2350', { unit_of_measurement: 'W', device_class: 'power', friendly_name: 'Inverter potenza' });
+add('sensor.inverter_daily_yield', '9.8', { unit_of_measurement: 'kWh', device_class: 'energy', friendly_name: 'Produzione oggi' });
+add('script.buonanotte', 'off', { friendly_name: 'Buonanotte' });
+add('script.esco_di_casa', 'off', { friendly_name: 'Esco di casa' });
+add('automation.luci_giardino_al_tramonto', 'on', { friendly_name: 'Luci giardino al tramonto', last_triggered: iso(300) });
+const hass = {
+  states: S, entities: E, areas: A, devices: {}, language: 'it', locale: { language: 'it' },
+  user: { name: 'Marco', is_admin: true },
+  callWS: async m => {
+    if (m.type === 'history/history_during_period') { const out = {}; (m.entity_ids || []).forEach(id => { out[id] = [{ s: S[id]?.state || '0', lu: Date.now() / 1000 - 3600 }]; }); return out; }
+    if (m.type === 'logbook/get_events') return [];
+    if (m.type === 'recorder/statistics_during_period') return {};
+    return {};
+  },
+  callService: (d, s, data) => { console.log('SERVICE', d, s, JSON.stringify(data)); return Promise.resolve(); },
+  connection: { subscribeMessage: (cb, msg) => { setTimeout(() => cb({ forecast: [] }), 30); return Promise.resolve(() => {}); } },
+  hassUrl: p => p,
+};
+await import('../dist/isola-live.js');
+const c = document.getElementById('c');
+c.setConfig({
+  title: 'Casa Rossi', image: './casa-demo.jpg', kiosk: location.hash.includes('kiosk'), night_dim: true, ppm: 34, image_north: 20,
+  lights: [
+    { id: 'lampadario_soggiorno', px: [700, 230], room: [[510, 124], [900, 124], [900, 506], [650, 506], [650, 336], [510, 336]], radius: 4.5 },
+    { id: 'cucina_isola', px: [1025, 320], room: [[910, 124], [1126, 124], [1126, 506], [910, 506]], radius: 4 },
+    { id: 'camera', px: [370, 225], room: [[244, 124], [496, 124], [496, 326], [244, 326]], radius: 3.6 },
+    { id: 'cameretta', px: [525, 425], room: [[406, 336], [636, 336], [636, 506], [406, 506]], radius: 3.2 },
+    { id: 'bagno', px: [320, 425], room: [[244, 336], [396, 336], [396, 506], [244, 506]], radius: 2.6 },
+  ],
+  devices: [
+    { id: 'robi', px: [870, 470], area_px: [[530, 360, 880, 490], [670, 140, 880, 330]] },
+    { id: 'erbetta', px: [610, 700], area_px: [[220, 600, 620, 730], [760, 710, 1300, 735]] },
+  ],
+  sensors: [
+    { id: 'fin_soggiorno', type: 'window', entity: 'binary_sensor.finestra_soggiorno', name: 'Soggiorno', px: [700, 118] },
+    { id: 'fin_cucina', type: 'window', entity: 'binary_sensor.finestra_cucina', name: 'Cucina', px: [1030, 118] },
+    { id: 'cam_giardino', type: 'camera', entity: 'camera.giardino', motion: 'binary_sensor.giardino_motion', name: 'Giardino', px: [1220, 600] },
+    { id: 'porta', type: 'lock', entity: 'lock.porta_ingresso', name: 'Porta', px: [690, 540] },
+  ],
+  energy: { px: [470, 600], house_px: [700, 330] },
+  presence: { 'binary_sensor.movimento_soggiorno': [760, 300] }, presence_default: [760, 300],
+  arrival_path: [[685, 768], [685, 600], [690, 525]],
+});
+c.hass = hass;
+window.__hass = hass; window.__S = S;
+window.__set = (id, st, at) => { S[id] = { ...S[id], state: st, attributes: { ...(S[id]?.attributes || {}), ...(at || {}) }, last_changed: new Date().toISOString() }; c.hass = { ...hass, states: { ...S } }; };
+</script></body></html>
