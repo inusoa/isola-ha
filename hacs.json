@@ -1,0 +1,6 @@
+{
+  "name": "Isola",
+  "filename": "isola-ha.js",
+  "render_readme": true,
+  "homeassistant": "2024.10.0"
+}
