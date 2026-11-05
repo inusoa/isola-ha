@@ -20,6 +20,8 @@ L'interfaccia di casa che si configura da sola: elegante sul telefono, viva sul 
 
 ---
 
+> 🌍 **Italiano e inglese.** Isola parla la lingua di Home Assistant: in italiano se Home Assistant è in italiano, in inglese per tutte le altre lingue. Si può forzare con `language: it` o `language: en`.
+
 ## Due volti, una casa
 
 | | Dove si usa | Card |
@@ -245,6 +247,7 @@ Tutto quello che scrivi nella card ha la precedenza su ciò che Isola trova da s
 | `waste` | `{ today: sensor.raccolta_oggi, tomorrow: sensor.raccolta_domani, from: 17, to: 20 }` | Promemoria della raccolta differenziata |
 | `casa_live` | stessa configurazione di Isola Live | Mappa che si apre dal telefono |
 | `auto` | `false` | Spegne la configurazione automatica |
+| `language` | `auto` / `it` / `en` | Lingua: segue Home Assistant (italiano, oppure inglese per tutte le altre lingue) |
 
 Esempio di scene:
 
@@ -272,6 +275,7 @@ Isola riconosce da sola gli script che si chiamano come *esco*, *notte/buonanott
 | `energy` | `{ px, house_px }` | Riquadro fotovoltaico e batteria |
 | `presence` | `{ binary_sensor.x: [x, y] }` | Dove compaiono le persone in base al movimento |
 | `title` | `Casa Rossi` | Titolo in alto a sinistra |
+| `language` | `auto` / `it` / `en` | Lingua dell'interfaccia e del configuratore |
 
 ---
 
@@ -292,7 +296,7 @@ Isola riconosce da sola gli script che si chiamano come *esco*, *notte/buonanott
 
 ## Prova senza installare
 
-👉 **[Apri la demo online](https://inusoa.github.io/isola-ha/)**: Isola e Isola Live con la casa dimostrativa, direttamente nel browser.
+👉 **[Apri la demo online](https://inusoa.github.io/isola-ha/?lang=it)**: Isola e Isola Live con la casa dimostrativa, direttamente nel browser.
 
 Oppure in locale:
 
@@ -309,7 +313,7 @@ Tutte le immagini di questa pagina sono state fatte con la casa dimostrativa.
 
 ## Sostieni Isola
 
-Isola è gratuita e open source, e lo resterà. Se ti rende la casa più bella da vivere, un caffè mi aiuta a migliorarla: nuove funzioni, l'interfaccia in inglese, più dispositivi supportati.
+Isola è gratuita e open source, e lo resterà. Se ti rende la casa più bella da vivere, un caffè mi aiuta a migliorarla: nuove funzioni, altre lingue, più dispositivi supportati.
 
 <a href="https://buymeacoffee.com/inusoa"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-ffdd00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy me a coffee"></a>
 

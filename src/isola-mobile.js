@@ -1,9 +1,10 @@
+import { i18nAttach, i18nLang, i18nLoc } from './isola-i18n.js';
 /* Isola – l'interfaccia di casa per smartphone (Home Assistant)
  * Isola       = smartphone (questa card: type: custom:isola-mobile)
  * Isola Live  = tablet a parete o hub fisso (type: custom:isola-live)
  * Si configura da sola dalle aree e dai dispositivi di Home Assistant; ogni voce si può cambiare nel YAML della card.
  */
-const VERSION = '1.0.0-beta.4';
+const VERSION = '1.0.0-beta.5';
 let IMG_W = 1364, IMG_H = 768;
 // ritagli delle stanze sulla foto della casa: room_crops: { Soggiorno: [x0, y0, x1, y1] } (pixel della foto)
 const applyCrops = c => { const K = c.room_crops || {}; (c.rooms || []).forEach(r => { if (K[r.name]) r.crop = K[r.name]; }); return c; };
@@ -131,8 +132,8 @@ function autoConfig(h) {
 
 // ------------------------------------------------------------------ utilità
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const nf = (v, d = 0) => Number(v).toLocaleString('it-IT', { minimumFractionDigits: d, maximumFractionDigits: d, useGrouping: 'always' });
-const hhmm = d => d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+const nf = (v, d = 0) => Number(v).toLocaleString(i18nLoc(), { minimumFractionDigits: d, maximumFractionDigits: d, useGrouping: 'always' });
+const hhmm = d => d.toLocaleTimeString(i18nLoc(), { hour: '2-digit', minute: '2-digit' });
 const BAD = /^(unknown|unavailable|none|)$/i;
 const GIORNI = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'];
 const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
@@ -569,6 +570,7 @@ class IsolaCard extends HTMLElement {
   }
   set hass(h) {
     this._hass = h;
+    i18nLang(h, this._user && this._user.language);
     // configurazione automatica (si rifà se cambiano aree o entità)
     if (this._user && this._user.auto !== false) {
       const key = Object.keys(h.states || {}).length + '|' + Object.keys(h.areas || {}).length;
@@ -604,7 +606,7 @@ class IsolaCard extends HTMLElement {
       l.href = 'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Manrope:wght@400;500;600;700&display=swap';
       document.head.appendChild(l);
     }
-    if (!this._root) this._root = this.attachShadow({ mode: 'open' });
+    if (!this._root) { this._root = this.attachShadow({ mode: 'open' }); i18nAttach(this._root); }
     const c = this._config;
     this._root.innerHTML = `<style>${CSS}</style>
       <div class="app${c.fullscreen ? ' fs' : ''}" style="${c.fullscreen ? 'z-index:' + (+c.z_index || 7) : ''}">
@@ -911,7 +913,7 @@ class IsolaCard extends HTMLElement {
     const lock = this._st(c.lock)?.state || '';
 
     // data e ora
-    const dstr = now.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+    const dstr = now.toLocaleDateString(i18nLoc(), { weekday: 'long', day: 'numeric', month: 'long' });
     this._set('date', `${esc(cap(dstr))} · ${hhmm(now)}`);
 
     // titolo in linguaggio naturale
@@ -1485,7 +1487,7 @@ class IsolaCard extends HTMLElement {
     } else {
       const a = B.attributes, costo = parseFloat(B.state), senza = +a.senza_fotovoltaico;
       const d0 = new Date(a.inizio + 'T00:00:00'), d1 = new Date(a.fine + 'T00:00:00');
-      const ms = d => d.toLocaleDateString('it-IT', { month: 'short' }).replace('.', '');
+      const ms = d => d.toLocaleDateString(i18nLoc(), { month: 'short' }).replace('.', '');
       title = `${eur(costo)} a fine bimestre.`;
       sub = `Bolletta ${ms(d0)}–${ms(d1)}, da pagare a ${a.da_pagare_a}.` + (senza > 0 ? ` Senza il sole sarebbero ${eur(senza, 0)}.` : '');
       const wCon = senza > 0 ? Math.max(0, Math.min(100, costo / senza * 100)) : 0;
@@ -1506,7 +1508,7 @@ class IsolaCard extends HTMLElement {
     // autosufficienza
     const M = this._st('sensor.autosufficienza_mese'), Y = this._st('sensor.autosufficienza_anno');
     if (M && Y && !isNaN(parseFloat(M.state))) {
-      const m = M.attributes, mn = cap(now.toLocaleDateString('it-IT', { month: 'long' }));
+      const m = M.attributes, mn = cap(now.toLocaleDateString(i18nLoc(), { month: 'long' }));
       const ring = (v, col, l, s) => { const r = 38, cc = 2 * Math.PI * r, off = cc * (1 - Math.max(0, Math.min(100, v)) / 100); return `<div class="ring"><span><svg aria-hidden="true" width="96" height="96" viewBox="0 0 96 96" style="transform:rotate(-90deg)"><circle cx="48" cy="48" r="${r}" fill="none" stroke="rgba(243,239,231,.08)" stroke-width="9"/><circle cx="48" cy="48" r="${r}" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${cc.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/></svg><b class="disp">${nf(v)}%</b></span><strong>${l}</strong><em>${s}</em></div>`; };
       this._set('x_self', `<section class="card" aria-label="Autosufficienza">
         <div class="row sp"><span class="lab">Autosufficienza</span><span class="chip">stima</span></div>
@@ -1521,7 +1523,7 @@ class IsolaCard extends HTMLElement {
     const vY = !isNaN(vs('sensor.valore_fv_anno')) ? vs('sensor.valore_fv_anno') : this._val(this._n(c.inverter.year, 0));
     const gse = vs('sensor.accredito_gse_mese');
     this._set('x_value', `<section class="card" aria-label="Quanto vale il sole"><span class="lab">Quanto vale il sole</span>
-      ${this._trio([['Oggi', eur(vO)], [cap(now.toLocaleDateString('it-IT', { month: 'long' })), eur(vM)], [String(now.getFullYear()), eur(vY, 0)]])}
+      ${this._trio([['Oggi', eur(vO)], [cap(now.toLocaleDateString(i18nLoc(), { month: 'long' })), eur(vM)], [String(now.getFullYear()), eur(vY, 0)]])}
       ${!isNaN(gse) ? `<span class="foot">Accredito GSE previsto questo mese: <b>${eur(gse)}</b></span>` : ''}</section>`);
     // tariffe
     const T = [['input_number.prezzo_acquisto', 'Prezzo acquisto €/kWh', 4], ['input_number.prezzo_vendita', 'Energia immessa €/kWh', 4], ['input_number.quota_autoconsumo', 'Quota autoconsumata %', 0], ['input_number.prelievo_mensile', 'Prelievo medio kWh/mese', 0], ['input_number.costi_fissi_mensili', 'Costi fissi €/mese', 2]].filter(x => this._st(x[0]));
@@ -1621,7 +1623,7 @@ class IsolaCard extends HTMLElement {
     const best = have.length ? shown.indexOf(Math.max(...have)) : -1;
     const sel = this._selM !== undefined && shown[this._selM] != null ? this._selM : best;
     const co2 = +c.co2_kg_kwh || 0.25;
-    const MN = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+    const MN = Array.from({ length: 12 }, (_, i) => { const t = new Date(2026, i, 1).toLocaleDateString(i18nLoc(), { month: 'short' }).replace('.', ''); return t.charAt(0).toUpperCase() + t.slice(1); });
     const ML = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
     const bars = vals.map((v, i) => {
       const future = i > cm;
@@ -1665,7 +1667,7 @@ class IsolaCard extends HTMLElement {
     if (m < 1) return 'ora'; if (m < 60) return Math.round(m) + ' min fa';
     if (sameDay(t, now)) return 'alle ' + hhmm(t);
     const y = new Date(now); y.setDate(y.getDate() - 1);
-    return (sameDay(t, y) ? 'ieri ' : t.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }) + ' ') + hhmm(t);
+    return (sameDay(t, y) ? 'ieri ' : t.toLocaleDateString(i18nLoc(), { day: 'numeric', month: 'short' }) + ' ') + hhmm(t);
   }
   _isLive(alarm) { return (this._config.security.live_when || []).includes(alarm) || !!this._camLive; }
 
@@ -1883,7 +1885,7 @@ class IsolaCard extends HTMLElement {
     const st = String(s.state), a = s.attributes || {}, dom = s.entity_id.split('.')[0];
     if (BAD.test(st)) return st === 'unavailable' ? 'Non disponibile' : '–';
     if (dom === 'binary_sensor') { const L = BIN_IT[a.device_class] || ['Sì', 'No']; return st === 'on' ? L[0] : L[1]; }
-    if (a.device_class === 'timestamp' || /^\d{4}-\d\d-\d\dT/.test(st)) { const d = new Date(st); if (!isNaN(d)) return d > new Date() ? (sameDay(d, new Date()) ? 'alle ' + hhmm(d) : d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' }) + ' ' + hhmm(d)) : this._ago(st, new Date()); }
+    if (a.device_class === 'timestamp' || /^\d{4}-\d\d-\d\dT/.test(st)) { const d = new Date(st); if (!isNaN(d)) return d > new Date() ? (sameDay(d, new Date()) ? 'alle ' + hhmm(d) : d.toLocaleDateString(i18nLoc(), { weekday: 'short', day: 'numeric', month: 'short' }) + ' ' + hhmm(d)) : this._ago(st, new Date()); }
     const v = Number(st);
     if (st !== '' && !isNaN(v)) { const u = a.unit_of_measurement || ''; return nf(v, Number.isInteger(v) ? 0 : Math.abs(v) < 10 ? 2 : 1) + (u ? (u === '%' ? '%' : ' ' + u) : ''); }
     return STATE_IT[st.toLowerCase()] || this._opt(st);
@@ -2100,7 +2102,7 @@ class IsolaCard extends HTMLElement {
     let g = '';
     [0, 0.5, 1].forEach(f => { const y = Y(ymax * f); g += `<line x1="${Lm}" x2="${W - R}" y1="${y}" y2="${y}" stroke="rgba(243,239,231,.07)"/><text x="${Lm - 5}" y="${y + 3}" text-anchor="end" class="ax">${ymax * f >= 1000 ? nf(ymax * f / 1000, 1) + 'k' : Math.round(ymax * f)}</text>`; });
     const span = e.proc.t1 - e.proc.t0;
-    for (let k = 0; k <= 4; k++) { const t = new Date(e.proc.t0 + span * k / 4); g += `<text x="${Lm + (W - Lm - R) * k / 4}" y="${H - 6}" text-anchor="${k === 0 ? 'start' : k === 4 ? 'end' : 'middle'}" class="ax">${k === 4 ? 'ora' : hours > 48 ? t.toLocaleDateString('it-IT', { weekday: 'short' }) : String(t.getHours()).padStart(2, '0') + ':00'}</text>`; }
+    for (let k = 0; k <= 4; k++) { const t = new Date(e.proc.t0 + span * k / 4); g += `<text x="${Lm + (W - Lm - R) * k / 4}" y="${H - 6}" text-anchor="${k === 0 ? 'start' : k === 4 ? 'end' : 'middle'}" class="ax">${k === 4 ? 'ora' : hours > 48 ? t.toLocaleDateString(i18nLoc(), { weekday: 'short' }) : String(t.getHours()).padStart(2, '0') + ':00'}</text>`; }
     vis.slice().reverse().forEach(s => {
       const line = s.pts.map((v, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
       if (s.fill) g += `<path d="${line} L${X(n - 1)},${Y(0)} L${X(0)},${Y(0)} Z" fill="url(#isola-fv2)"/>`;
@@ -2111,7 +2113,7 @@ class IsolaCard extends HTMLElement {
       const i = Math.max(0, Math.min(n - 1, Math.round((this._cf * W - Lm) / (W - Lm - R) * (n - 1))));
       const x = X(i), t = new Date(e.proc.t0 + (i + 0.5) * e.proc.step);
       g += `<line x1="${x}" x2="${x}" y1="${T}" y2="${H - B}" stroke="#F3EFE7" stroke-opacity=".5" stroke-dasharray="2 3"/>`;
-      tip = `<div class="ctip"><b>${hours > 24 ? t.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric' }) + ' ' : ''}${hhmm(t)}</b>${vis.map(s => `<span><i style="background:${s.color}"></i>${esc(s.name)}<em>${nf(s.pts[i])} W</em></span>`).join('')}</div>`;
+      tip = `<div class="ctip"><b>${hours > 24 ? t.toLocaleDateString(i18nLoc(), { weekday: 'short', day: 'numeric' }) + ' ' : ''}${hhmm(t)}</b>${vis.map(s => `<span><i style="background:${s.color}"></i>${esc(s.name)}<em>${nf(s.pts[i])} W</em></span>`).join('')}</div>`;
     }
     const chart = `<section class="card"><div class="row sp"><span class="lab">Potenza</span><span class="mut" style="font-size:12px">tocca il grafico</span></div>
       <svg data-chart="consumi" viewBox="0 0 ${W} ${H}" width="100%" style="display:block;touch-action:pan-y"><defs><linearGradient id="isola-fv2" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#F5B544" stop-opacity=".5"/><stop offset="1" stop-color="#F5B544" stop-opacity=".03"/></linearGradient></defs>${g}</svg>${tip}
