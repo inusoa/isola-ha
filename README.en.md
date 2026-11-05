@@ -18,7 +18,7 @@ The home interface that sets itself up: elegant on your phone, alive on your tab
 <a href="https://buymeacoffee.com/inusoa"><img alt="Buy me a coffee" src="https://img.shields.io/badge/Buy%20me%20a%20coffee-ffdd00?style=for-the-badge&logo=buymeacoffee&logoColor=black"></a>
 </p>
 
-> **Language note:** the interface is currently in **Italian**. English labels are on the roadmap.
+> 🌍 **English and Italian.** Isola speaks your Home Assistant language: Italian if Home Assistant is in Italian, English for every other language. Force it with `language: en` or `language: it`.
 
 ---
 
@@ -247,6 +247,7 @@ Anything you write in the card overrides what Isola detects. To turn off automat
 | `waste` | `{ today: sensor.waste_today, tomorrow: sensor.waste_tomorrow, from: 17, to: 20 }` | Waste-collection reminder |
 | `casa_live` | same as Isola Live | Map opened from the phone |
 | `auto` | `false` | Turns off automatic configuration |
+| `language` | `auto` / `en` / `it` | Language: follows Home Assistant (Italian, or English for every other language) |
 
 Scene example:
 
@@ -274,6 +275,7 @@ Isola detects scripts named like *leave/away*, *night/good night*, *morning*, *h
 | `energy` | `{ px, house_px }` | Solar and battery box |
 | `presence` | `{ binary_sensor.x: [x, y] }` | Where people appear based on motion |
 | `title` | `The Smiths` | Title top left |
+| `language` | `auto` / `en` / `it` | Language of the interface and the configurator |
 
 ---
 
@@ -311,7 +313,7 @@ All images on this page were made with the demo home.
 
 ## Support Isola
 
-Isola is free and open source, and it will stay that way. If it makes your home nicer to live in, a coffee helps me keep improving it: new features, an English interface, more devices supported.
+Isola is free and open source, and it will stay that way. If it makes your home nicer to live in, a coffee helps me keep improving it: new features, more languages, more devices supported.
 
 <a href="https://buymeacoffee.com/inusoa"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-ffdd00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy me a coffee"></a>
 

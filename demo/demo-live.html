@@ -46,8 +46,14 @@ add('sensor.inverter_daily_yield', '9.8', { unit_of_measurement: 'kWh', device_c
 add('script.buonanotte', 'off', { friendly_name: 'Buonanotte' });
 add('script.esco_di_casa', 'off', { friendly_name: 'Esco di casa' });
 add('automation.luci_giardino_al_tramonto', 'on', { friendly_name: 'Luci giardino al tramonto', last_triggered: iso(300) });
+
+// ---- demo in inglese: ?lang=en (nomi delle entità e delle stanze tradotti)
+const EN = /[?&]lang=en\b/.test(location.search);
+const NAMES_EN = {"Soggiorno": "Living room", "Cucina": "Kitchen", "Camera": "Bedroom", "Cameretta": "Kids room", "Bagno": "Bathroom", "Giardino": "Garden", "Lavanderia": "Laundry", "Lampadario": "Ceiling light", "Lampada divano": "Sofa lamp", "TV soggiorno": "Living room TV", "Luci isola": "Island lights", "Macchina del caffè": "Coffee machine", "Luce camera": "Bedroom light", "Clima camera": "Bedroom AC", "Luce cameretta": "Kids room light", "Temperatura cameretta": "Kids room temperature", "Luce bagno": "Bathroom light", "Finestra soggiorno": "Living room window", "Finestra cucina": "Kitchen window", "Movimento soggiorno": "Living room motion", "Luci giardino": "Garden lights", "Movimento giardino": "Garden motion", "Erbetta": "Mowy", "Erbetta batteria": "Mowy battery", "Robi batteria": "Robi battery", "Lavatrice": "Washer", "Allarme": "Alarm", "Porta d’ingresso": "Front door", "Casa": "Home", "Sole": "Sun", "Buonanotte": "Good night", "Esco di casa": "Leaving home", "Luci giardino al tramonto": "Garden lights at sunset", "Batteria casa": "Home battery", "Batteria casa potenza": "Home battery power", "Lavatrice potenza": "Washer power", "Frigorifero": "Fridge", "Luci": "Lights", "Inverter potenza": "Inverter power", "Produzione oggi": "Production today", "Lavoro": "Work", "Porta": "Door", "Casa Rossi": "The Rossi home", "Telefono marco": "Marco phone", "Telefono giulia": "Giulia phone"};
+const tn = v => (EN && NAMES_EN[v]) || v;
+if (EN) { for (const s of Object.values(S)) { if (s.attributes.friendly_name) s.attributes.friendly_name = tn(s.attributes.friendly_name); if (s.entity_id.startsWith('person.')) s.state = tn(s.state); } for (const a of Object.values(A)) a.name = tn(a.name); }
 const hass = {
-  states: S, entities: E, areas: A, devices: {}, language: 'it', locale: { language: 'it' },
+  states: S, entities: E, areas: A, devices: {}, language: EN ? 'en' : 'it', locale: { language: EN ? 'en' : 'it' },
   user: { name: 'Marco', is_admin: true },
   callWS: async m => {
     // dashboard simulata: il configuratore salva qui, solo in questa pagina
@@ -90,6 +96,7 @@ window.__cfg = { type: 'custom:isola-live', ...{
   arrival_path: [[685, 768], [685, 600], [690, 525]],
 } };
 window.__dash = { title: 'Demo', views: [{ title: 'Demo', type: 'panel', cards: [window.__cfg] }] };
+if (EN) { const c0 = window.__cfg; if (c0.title) c0.title = tn(c0.title); (c0.sensors || []).forEach(m => { m.name = tn(m.name); }); if (c0.room_crops) c0.room_crops = Object.fromEntries(Object.entries(c0.room_crops).map(([k, v]) => [tn(k), v])); if (c0.casa_live && c0.casa_live.title) c0.casa_live.title = tn(c0.casa_live.title); window.__dash.views[0].cards[0] = c0; }
 c.setConfig(window.__cfg);
 c.hass = hass;
 window.__hass = hass; window.__S = S;

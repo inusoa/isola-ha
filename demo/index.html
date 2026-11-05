@@ -24,6 +24,7 @@ h1 small{display:block;font-size:14px;letter-spacing:.14em;text-transform:upperc
 .lead b{color:var(--tx)}
 .note{display:inline-flex;gap:8px;align-items:center;font-size:13px;color:var(--mut);margin-top:6px}
 .note i{width:8px;height:8px;border-radius:4px;background:var(--sun)}
+.note a{color:var(--tx)}
 .stage{display:grid;grid-template-columns:auto minmax(0,1fr);gap:34px;align-items:start;margin-top:26px}
 .col h2{margin:0 0 4px;font-size:18px}
 .col p{margin:0 0 14px;color:var(--mut);font-size:14px}
@@ -49,19 +50,19 @@ footer{margin-top:34px;color:var(--mut);font-size:13px;display:flex;gap:14px;fle
     <a class="btn bmc" href="https://buymeacoffee.com/inusoa">☕ Buy me a coffee</a>
   </div>
 </header>
-<p class="lead"><b>Try it right here.</b> This is a simulated home (the Rossi family): tap the rooms, switch lights on, open the alarm, drag the light-and-weather slider in Isola Live, or tap <b>📐 Posiziona</b> to place things on the photo. Nothing is installed and nothing leaves your browser.</p>
-<span class="note"><i></i>The interface is currently in Italian. English is on its way.</span>
+<p class="lead"><b>Try it right here.</b> This is a simulated home (the Rossi family): tap the rooms, switch lights on, open the alarm, drag the light-and-weather slider in Isola Live, or tap <b>📐 Place</b> to put things on the photo. Nothing is installed and nothing leaves your browser.</p>
+<span class="note"><i></i>Demo language: <a href="?lang=en" data-l="en">English</a> · <a href="?lang=it" data-l="it">Italiano</a>. Isola follows your Home Assistant language.</span>
 
 <div class="stage">
   <div class="col">
     <h2>📱 Isola · phone</h2>
-    <p>Your home in your pocket. <a href="demo.html">Open full screen ↗</a></p>
-    <div class="phone"><div class="scr"><iframe id="fp" src="demo.html" width="390" height="844" title="Isola demo" loading="lazy"></iframe></div></div>
+    <p>Your home in your pocket. <a href="demo.html" data-full>Open full screen ↗</a></p>
+    <div class="phone"><div class="scr"><iframe id="fp" data-src="demo.html" width="390" height="844" title="Isola demo" loading="lazy"></iframe></div></div>
   </div>
   <div class="col">
     <h2>🖥️ Isola Live · wall tablet</h2>
-    <p>Your home seen from above, alive. <a href="demo-live.html">Open full screen ↗</a></p>
-    <div class="tablet"><div class="scr"><iframe id="ft" src="demo-live.html" width="1280" height="800" title="Isola Live demo" loading="lazy"></iframe></div></div>
+    <p>Your home seen from above, alive. <a href="demo-live.html" data-full>Open full screen ↗</a></p>
+    <div class="tablet"><div class="scr"><iframe id="ft" data-src="demo-live.html" width="1280" height="800" title="Isola Live demo" loading="lazy"></iframe></div></div>
   </div>
 </div>
 
@@ -81,6 +82,11 @@ function fitFrames() {
     f.style.transform = `scale(${box.clientWidth / w})`;
   }
 }
+// lingua della demo: inglese, oppure italiano con ?lang=it
+const L = /[?&]lang=it\b/.test(location.search) ? 'it' : 'en';
+document.querySelectorAll('iframe[data-src]').forEach(f => { f.src = f.dataset.src + '?lang=' + L; });
+document.querySelectorAll('a[data-full]').forEach(a => { a.href = a.getAttribute('href') + '?lang=' + L; });
+document.querySelectorAll('a[data-l]').forEach(a => { if (a.dataset.l === L) a.style.fontWeight = '800'; else a.style.opacity = '.7'; });
 addEventListener('resize', fitFrames); fitFrames(); setTimeout(fitFrames, 300);
 </script>
 </body></html>

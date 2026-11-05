@@ -4,7 +4,8 @@
  * e le zone di lavoro dei robot, misura la scala e salva davvero nella dashboard
  * (con copia di sicurezza della configurazione precedente e ripristino).
  */
-const EDITOR_VERSION = '1.0.0-beta.4';
+import { i18nAttach, i18nLang, i18nLoc } from './isola-i18n.js';
+const EDITOR_VERSION = '1.0.0-beta.5';
 const BACKUP_KEY = 'isola_live_backup';
 const DEF_RADIUS = 4.6;
 
@@ -257,7 +258,8 @@ class IsolaLiveEditor extends HTMLElement {
     this.sel = -1; this.mode = 'list'; this.q = '';
     this.view = { s: 1, x: 0, y: 0 };
     this.draft = null;   // stanza in disegno, rettangolo, misura
-    this._root = this.attachShadow({ mode: 'open' });
+    i18nLang(o.hass, o.config && o.config.language);
+    this._root = this.attachShadow({ mode: 'open' }); i18nAttach(this._root);
     this._root.innerHTML = `<style>${CSS}</style><div class="ed">
       <div class="top"></div>
       <div class="vp"><div class="stage"><img alt=""><svg></svg></div><div class="tip"></div>
@@ -893,7 +895,7 @@ class IsolaLiveEditor extends HTMLElement {
       </div>
       ${st.err ? `<div class="note bad"><i></i><span>${esc(st.err)}</span></div>` : ''}
       ${!admin ? '<div class="note bad"><i></i><span>Solo un amministratore di Home Assistant può salvare nella dashboard. Puoi copiare lo YAML.</span></div>' : ''}
-      ${!st.ok && this._backup ? `<div class="note"><i></i><span>C’è una copia della configurazione salvata il ${esc(new Date(this._backup.at).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))}. <button class="ob" data-a="restore" style="display:inline-flex;width:auto;margin-top:8px">${icon('restore', 16)} Ripristina quella versione</button></span></div>` : ''}
+      ${!st.ok && this._backup ? `<div class="note"><i></i><span>C’è una copia della configurazione salvata il ${esc(new Date(this._backup.at).toLocaleString(i18nLoc(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))}. <button class="ob" data-a="restore" style="display:inline-flex;width:auto;margin-top:8px">${icon('restore', 16)} Ripristina quella versione</button></span></div>` : ''}
       ${!st.ok && !st.err ? '<div class="note"><i></i><span>Prima di salvare viene tenuta una copia della configurazione precedente: si torna indietro con un tocco.</span></div>' : ''}
       ${!st.ok ? '<div class="acts" style="margin-top:10px"><button class="btn" data-a="dlg-x">Continua a modificare</button></div>' : ''}`);
     return v;

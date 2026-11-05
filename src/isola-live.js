@@ -1,9 +1,10 @@
+import { i18nAttach, i18nLang, i18nLoc } from './isola-i18n.js';
 /* Isola Live – la casa viva per tablet a parete e hub fissi (Home Assistant)
  * Isola       = smartphone (type: custom:isola-mobile)
  * Isola Live  = tablet / hub fisso (questa card: type: custom:isola-live)
  * Foto della casa dall'alto (render) + luci, robot, persone, sensori posizionati in pixel sulla foto.
  */
-const VERSION = '1.0.0-beta.4';
+const VERSION = '1.0.0-beta.5';
 const VQ = new URL(import.meta.url).search;
 
 // ------------------------------------------------------------------ configurazione predefinita
@@ -164,7 +165,7 @@ class Casa3DCard extends HTMLElement {
   _quadro(dimmed) {
     const q = this._$('#quadro'), c = this._base || this._config, S = this._hass ? this._hass.states : {}, now = new Date();
     const st = id => S[id], num = id => { const s = S[id]; const v = s ? parseFloat(s.state) : NaN; return v; };
-    const hm = d => d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    const hm = d => d.toLocaleTimeString(i18nLoc(), { hour: '2-digit', minute: '2-digit' });
     const chips = [];
     // raccolta differenziata (se configurata: waste: { today, tomorrow, from, to })
     const W = c.waste, ok = x => x && x.state && !/^(unknown|unavailable|nessuna|none)$/i.test(x.state), h = now.getHours() + now.getMinutes() / 60;
@@ -187,13 +188,13 @@ class Casa3DCard extends HTMLElement {
       if (d.type === 'mower' && v === 'mowing') chips.push(['🌱 ' + d.name + ' taglia il prato', false]); });
     // sole e batteria
     const pvS = st(c.energy && c.energy.pv_power); let pv = pvS ? parseFloat(pvS.state) : NaN; if (pvS && (pvS.attributes.unit_of_measurement || 'W') === 'W') pv = pv / 1000;
-    if (!isNaN(pv) && pv > 0.05) chips.push(['☀️ ' + pv.toLocaleString('it-IT', { maximumFractionDigits: 1, minimumFractionDigits: 1 }) + ' kW dal sole', false]);
+    if (!isNaN(pv) && pv > 0.05) chips.push(['☀️ ' + pv.toLocaleString(i18nLoc(), { maximumFractionDigits: 1, minimumFractionDigits: 1 }) + ' kW dal sole', false]);
     const soc = (this._batt ? num(this._batt().soc) : NaN); if (!isNaN(soc)) chips.push(['🔋 Batteria ' + Math.round(soc) + '%', false]);
     const w = st(c.weather), t = w ? w.attributes.temperature : null;
     const wx = w ? `${EMOJI[WXI[w.state]] || ''} ${t != null ? Math.round(t) + '° · ' : ''}${WXN[w.state] || w.state}` : '';
     const esc = x => String(x).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
     q.classList.toggle('night', !!dimmed);
-    q.innerHTML = `<div class="qt">${hm(now)}</div><div class="qd">${esc((d => d.charAt(0).toUpperCase() + d.slice(1))(now.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })))}</div>${wx ? `<div class="qw">${esc(wx)}</div>` : ''}${chips.length ? `<div class="qc">${chips.slice(0, 6).map(([x, hot]) => `<span class="${hot ? 'hot' : ''}">${esc(x)}</span>`).join('')}</div>` : ''}`;
+    q.innerHTML = `<div class="qt">${hm(now)}</div><div class="qd">${esc((d => d.charAt(0).toUpperCase() + d.slice(1))(now.toLocaleDateString(i18nLoc(), { weekday: 'long', day: 'numeric', month: 'long' })))}</div>${wx ? `<div class="qw">${esc(wx)}</div>` : ''}${chips.length ? `<div class="qc">${chips.slice(0, 6).map(([x, hot]) => `<span class="${hot ? 'hot' : ''}">${esc(x)}</span>`).join('')}</div>` : ''}`;
   }
   connectedCallback() {
     if (!this._root) this._render();
@@ -227,6 +228,7 @@ class Casa3DCard extends HTMLElement {
 
   set hass(h) {
     this._hass = h;
+    i18nLang(h, this._user && this._user.language);
     if (this._user && this._user.auto !== false) {
       const key = Object.keys(h.states || {}).length;
       if (key !== this._autoKey) {
@@ -249,7 +251,7 @@ class Casa3DCard extends HTMLElement {
 
   // ------------------------------------------------------------------ DOM
   _render() {
-    const root = this._root = this.attachShadow({ mode: 'open' });
+    const root = this._root = this.attachShadow({ mode: 'open' }); i18nAttach(root);
     const c = this._config || DEFAULTS;
     root.innerHTML = `
 <style>
@@ -706,12 +708,12 @@ input[type=range]{width:100%}
       const on = st === 'on', w = this._watts(it.power), kwh = parseFloat(this._st(it.energy)?.state);
       const parts = [on ? 'Accesa' : st === 'off' ? 'Spenta' : tr(st)];
       if (w != null) parts.push(Math.round(w) + ' W');
-      if (!isNaN(kwh)) parts.push(kwh.toLocaleString('it-IT', { maximumFractionDigits: 2 }) + ' kWh oggi');
+      if (!isNaN(kwh)) parts.push(kwh.toLocaleString(i18nLoc(), { maximumFractionDigits: 2 }) + ' kWh oggi');
       return { txt: parts.join(' · '), cls: on ? 'active' : '' };
     }
     if (it.type === 'climate') {
       const a = s.attributes, act = a.hvac_action || '';
-      const n = v => v == null || isNaN(+v) ? '—' : (+v).toLocaleString('it-IT', { maximumFractionDigits: 1 }) + '°';
+      const n = v => v == null || isNaN(+v) ? '—' : (+v).toLocaleString(i18nLoc(), { maximumFractionDigits: 1 }) + '°';
       const mode = { heat: 'Caldo', cool: 'Freddo', auto: 'Auto', heat_cool: 'Auto', dry: 'Deumid.', fan_only: 'Ventola', off: 'Spento' }[st] || tr(st);
       const hot = act === 'heating' || (!act && st === 'heat'), cold = act === 'cooling' || (!act && st === 'cool');
       return { txt: st === 'off' ? 'Spento' : `${mode} → ${n(a.temperature)}`, tp: n(a.current_temperature), cls: hot ? 'heat' : cold ? 'cool' : st !== 'off' && st !== 'unavailable' ? 'active' : '' };
@@ -915,7 +917,7 @@ input[type=range]{width:100%}
       if (!isHome) {
         const zone = st.state !== 'not_home' ? st.state : null, eta = p.eta ? this._st(p.eta) : null;
         const et = eta && !isNaN(parseFloat(eta.state)) ? Math.round(parseFloat(eta.state)) : null;
-        const fmt = k => k < 1 ? Math.round(k * 1000) + ' m' : (k < 10 ? k.toLocaleString('it-IT', { maximumFractionDigits: 1 }) : Math.round(k)) + ' km';
+        const fmt = k => k < 1 ? Math.round(k * 1000) + ' m' : (k < 10 ? k.toLocaleString(i18nLoc(), { maximumFractionDigits: 1 }) : Math.round(k)) + ' km';
         const txt = [zone, km != null && km > 0.15 ? fmt(km) : null, et != null ? (coming ? 'a casa tra ' + et + ' min' : et + ' min da casa') : (coming ? 'sta rientrando' : null)].filter(Boolean).join(' · ');
         away.push(`<span class="pp${coming ? ' come' : ''}" data-e="${p.entity}" style="--pc:${p.color}"><i style="${pic(st)}">${pic(st) ? '' : ini(p)}</i><b>${p.name}</b><small>${txt || 'fuori casa'}</small></span>`);
       }
@@ -1059,7 +1061,7 @@ input[type=range]{width:100%}
       const pv = this._watts(c.energy.pv_power), bt = this._batt();
       let bp = this._watts(bt.pw); if (bp !== null && c.energy.battery_invert) bp = -bp;
       const soc = bt.soc ? parseFloat(this._st(bt.soc)?.state) : NaN;
-      const kw = w => (Math.abs(w) / 1000).toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' kW';
+      const kw = w => (Math.abs(w) / 1000).toLocaleString(i18nLoc(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' kW';
       this._en.querySelector('.pv').textContent = pv === null ? '—' : pv < 20 ? 'Fermo' : kw(pv);
       const bat = this._en.querySelector('.bat');
       bat.classList.toggle('miss', isNaN(soc));
@@ -1228,7 +1230,7 @@ input[type=range]{width:100%}
     if (it.related && this._hass) {
       const keys = Object.keys(this._hass.states).filter(k => k.includes(it.related) && /^(sensor|binary_sensor|select|vacuum|lawn_mower)\./.test(k)).slice(0, 14);
       rel = '<div class="rel">' + keys.map(k => { const x = this._hass.states[k]; const u = x.attributes.unit_of_measurement || ''; let v = x.state;
-        if (x.attributes.device_class === 'timestamp' && !isNaN(Date.parse(v))) v = new Date(v).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+        if (x.attributes.device_class === 'timestamp' && !isNaN(Date.parse(v))) v = new Date(v).toLocaleTimeString(i18nLoc(), { hour: '2-digit', minute: '2-digit' });
         const nm = (x.attributes.friendly_name || k).replace(it.name, '').trim(); return `<span data-e="${k}">${NAMES[nm.toLowerCase()] || nm || 'Stato'}</span><span>${tr(v)} ${u}</span>`; }).join('') + '</div>';
     }
     sh.innerHTML = `<div class="sh-h"><span class="ic">${this._icon(it.icon)}</span><div><b>${it.name}</b><small>${sm.txt || (e ? '' : 'Entità non configurata')}</small></div><button class="x" id="x">✕</button></div>
@@ -1244,7 +1246,7 @@ input[type=range]{width:100%}
       if (a === 's_energy') return this._moreInfo(it.energy);
       if (a === 'c_up' || a === 'c_down') {
         const t = Math.round((+(s?.attributes.temperature ?? 21) + (a === 'c_up' ? 0.5 : -0.5)) * 2) / 2;
-        this._call('climate', 'set_temperature', { entity_id: e, temperature: t }); this._toast(it.name + ' · ' + t.toLocaleString('it-IT') + '°'); return;
+        this._call('climate', 'set_temperature', { entity_id: e, temperature: t }); this._toast(it.name + ' · ' + t.toLocaleString(i18nLoc()) + '°'); return;
       }
       if (a === 'c_heat' || a === 'c_cool' || a === 'c_off') {
         this._call('climate', 'set_hvac_mode', { entity_id: e, hvac_mode: { c_heat: 'heat', c_cool: 'cool', c_off: 'off' }[a] }); this._toast(b.textContent + ' · ' + it.name); return;
