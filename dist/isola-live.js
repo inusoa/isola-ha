@@ -3,7 +3,7 @@
  * Isola Live  = tablet / hub fisso (questa card: type: custom:isola-live)
  * Foto della casa dall'alto (render) + luci, robot, persone, sensori posizionati in pixel sulla foto.
  */
-const VERSION = '1.0.0-beta.2';
+const VERSION = '1.0.0-beta.3';
 const VQ = new URL(import.meta.url).search;
 
 // ------------------------------------------------------------------ configurazione predefinita
@@ -67,7 +67,7 @@ function liveAuto(h) {
   };
 }
 const mergeById = (a = [], b = []) => { const out = a.map(x => ({ ...x })); for (const u of b || []) { const i = out.findIndex(x => (u.id && x.id === u.id) || (u.entity && x.entity === u.entity)); if (i >= 0) out[i] = { ...out[i], ...u }; else out.push({ ...u }); } return out; };
-const EMOJI = { 'mdi:cog-outline': '⚙️', 'mdi:power-socket-eu': '🔌', 'mdi:air-conditioner': '❄️', 'mdi:cube-outline': '🧊', 'mdi:image-outline': '🖼️', 'mdi:label-outline': '🏷️', 'mdi:camera-iris': '📷', 'mdi:home-outline': '🏠', 'mdi:sofa-outline': '🛋️', 'mdi:tree-outline': '🌳', 'mdi:arrow-collapse-down': '⬇️', 'mdi:wall': '🧱', 'mdi:fullscreen': '⤢', 'mdi:ceiling-light': '💡', 'mdi:outdoor-lamp': '🏮', 'mdi:robot-vacuum': '🤖', 'mdi:robot-mower': '🌱', 'mdi:washing-machine': '🫧', 'mdi:television': '📺', 'mdi:broom': '🧹', 'mdi:shield-home': '🛡️', 'mdi:weather-sunset': '🌇', 'mdi:weather-sunny': '☀️', 'mdi:weather-night': '🌙', 'mdi:weather-partly-cloudy': '⛅', 'mdi:weather-cloudy': '☁️', 'mdi:weather-rainy': '🌧️', 'mdi:weather-pouring': '🌧️', 'mdi:weather-lightning': '⛈️', 'mdi:weather-lightning-rainy': '⛈️', 'mdi:weather-fog': '🌫️', 'mdi:weather-snowy': '🌨️', 'mdi:weather-snowy-rainy': '🌨️', 'mdi:weather-hail': '🌨️', 'mdi:weather-windy': '💨', 'mdi:weather-windy-variant': '💨', 'mdi:alert-outline': '⚠️', 'mdi:solar-power-variant': '☀️', 'mdi:cctv': '📹', 'mdi:lock': '🔒', 'mdi:lock-open-variant': '🔓', 'mdi:window-open-variant': '🪟', 'mdi:home-battery': '🔋', 'mdi:battery-clock-outline': '🔋', 'mdi:chevron-right': '›', 'mdi:bell-ring': '🔔' };
+const EMOJI = { 'mdi:cog-outline': '⚙️', 'mdi:pencil-ruler': '📐', 'mdi:power-socket-eu': '🔌', 'mdi:air-conditioner': '❄️', 'mdi:cube-outline': '🧊', 'mdi:image-outline': '🖼️', 'mdi:label-outline': '🏷️', 'mdi:camera-iris': '📷', 'mdi:home-outline': '🏠', 'mdi:sofa-outline': '🛋️', 'mdi:tree-outline': '🌳', 'mdi:arrow-collapse-down': '⬇️', 'mdi:wall': '🧱', 'mdi:fullscreen': '⤢', 'mdi:ceiling-light': '💡', 'mdi:outdoor-lamp': '🏮', 'mdi:robot-vacuum': '🤖', 'mdi:robot-mower': '🌱', 'mdi:washing-machine': '🫧', 'mdi:television': '📺', 'mdi:broom': '🧹', 'mdi:shield-home': '🛡️', 'mdi:weather-sunset': '🌇', 'mdi:weather-sunny': '☀️', 'mdi:weather-night': '🌙', 'mdi:weather-partly-cloudy': '⛅', 'mdi:weather-cloudy': '☁️', 'mdi:weather-rainy': '🌧️', 'mdi:weather-pouring': '🌧️', 'mdi:weather-lightning': '⛈️', 'mdi:weather-lightning-rainy': '⛈️', 'mdi:weather-fog': '🌫️', 'mdi:weather-snowy': '🌨️', 'mdi:weather-snowy-rainy': '🌨️', 'mdi:weather-hail': '🌨️', 'mdi:weather-windy': '💨', 'mdi:weather-windy-variant': '💨', 'mdi:alert-outline': '⚠️', 'mdi:solar-power-variant': '☀️', 'mdi:cctv': '📹', 'mdi:lock': '🔒', 'mdi:lock-open-variant': '🔓', 'mdi:window-open-variant': '🪟', 'mdi:home-battery': '🔋', 'mdi:battery-clock-outline': '🔋', 'mdi:chevron-right': '›', 'mdi:bell-ring': '🔔' };
 const WXN = { 'sunny': 'Sereno', 'clear-night': 'Sereno', 'partlycloudy': 'Poco nuvoloso', 'cloudy': 'Nuvoloso', 'fog': 'Nebbia', 'rainy': 'Pioggia', 'pouring': 'Pioggia forte', 'lightning': 'Temporale', 'lightning-rainy': 'Temporale', 'hail': 'Grandine', 'snowy': 'Neve', 'snowy-rainy': 'Nevischio', 'windy': 'Ventoso', 'windy-variant': 'Ventoso', 'exceptional': 'Allerta' };
 const WXI = { 'sunny': 'mdi:weather-sunny', 'clear-night': 'mdi:weather-night', 'partlycloudy': 'mdi:weather-partly-cloudy', 'cloudy': 'mdi:weather-cloudy', 'fog': 'mdi:weather-fog', 'rainy': 'mdi:weather-rainy', 'pouring': 'mdi:weather-pouring', 'lightning': 'mdi:weather-lightning', 'lightning-rainy': 'mdi:weather-lightning-rainy', 'hail': 'mdi:weather-hail', 'snowy': 'mdi:weather-snowy', 'snowy-rainy': 'mdi:weather-snowy-rainy', 'windy': 'mdi:weather-windy', 'windy-variant': 'mdi:weather-windy-variant', 'exceptional': 'mdi:alert-outline' };
 // posizione del sole (algoritmo NOAA semplificato): elevazione e azimut in gradi
@@ -241,6 +241,7 @@ class Casa3DCard extends HTMLElement {
       }
     }
     this._applyKiosk();
+    this._editBtn();
     if (this._scene || this._rv) this._sync();
     this._refreshMarkers();
     this._renderChips();
@@ -407,7 +408,7 @@ input[type=range]{width:100%}
     <div class="title glass"><b id="ttl"></b><div class="stat" id="stat"></div><div class="floors" id="floors"></div><div class="ppl" id="ppl"></div></div>
     <div class="tools glass">
       <button data-v="casa" title="Casa">${this._icon('mdi:home-outline')}<span class="lb">Casa</span></button><button data-v="interno" title="Interno">${this._icon('mdi:sofa-outline')}<span class="lb">Interno</span></button><button data-v="giardino" title="Giardino">${this._icon('mdi:tree-outline')}<span class="lb">Giardino</span></button><button data-v="alto" title="Vista dall'alto">${this._icon('mdi:arrow-collapse-down')}<span class="lb">Alto</span></button>
-      <button id="cut" title="Pareti basse">${this._icon('mdi:wall')}<span class="lb">Pareti basse</span></button><button id="lbl" title="Etichette">${this._icon('mdi:label-outline')}<span class="lb">Etichette</span></button><button id="photo" title="Foto realistica">${this._icon('mdi:camera-iris')}<span class="lb">Foto</span></button><button id="mode" title="Cambia vista: foto / 3D">${this._icon('mdi:cube-outline')}<span class="lb">3D</span></button><button id="sim" title="Luce e meteo: simula ora e tempo">${this._icon('mdi:weather-sunset')}<span class="lb">Luce</span></button><button id="cfg" title="Impostazioni dell'app">${this._icon('mdi:cog-outline')}</button><button id="max" title="Schermo intero">${this._icon('mdi:fullscreen')}</button>
+      <button id="cut" title="Pareti basse">${this._icon('mdi:wall')}<span class="lb">Pareti basse</span></button><button id="lbl" title="Etichette">${this._icon('mdi:label-outline')}<span class="lb">Etichette</span></button><button id="photo" title="Foto realistica">${this._icon('mdi:camera-iris')}<span class="lb">Foto</span></button><button id="mode" title="Cambia vista: foto / 3D">${this._icon('mdi:cube-outline')}<span class="lb">3D</span></button><button id="sim" title="Luce e meteo: simula ora e tempo">${this._icon('mdi:weather-sunset')}<span class="lb">Luce</span></button><button id="edit" title="Posiziona gli elementi sulla foto" hidden>${this._icon('mdi:pencil-ruler')}<span class="lb">Posiziona</span></button><button id="cfg" title="Impostazioni dell'app">${this._icon('mdi:cog-outline')}</button><button id="max" title="Schermo intero">${this._icon('mdi:fullscreen')}</button>
     </div>
   </div>
   <div class="sim glass" id="simp">
@@ -430,6 +431,8 @@ input[type=range]{width:100%}
     $('#lbl').addEventListener('click', e => { this._lblMode = (this._lblMode + 1) % 3; this._names = this._lblMode === 1; $('#card').classList.toggle('names', this._names); this._noPins = this._lblMode === 2; $('#card').classList.toggle('nolbl', this._noPins); e.currentTarget.classList.toggle('on', this._lblMode !== 0); this._scene && (this._scene.dirty = true); });
     $('#photo').addEventListener('click', e => this._togglePhoto(e.currentTarget));
     $('#cfg').addEventListener('click', () => this._appSettings());
+    $('#edit').addEventListener('click', () => this._openEditor());
+    this._editBtn();
     $('#max').addEventListener('click', () => { $('#card').classList.toggle('max'); setTimeout(() => { this._scene && this._scene.resize(); this._rv && this._rv.fit(); }, 50); });
     $('#mode').addEventListener('click', () => this._setMode(this._mode() === 'render' ? '3d' : 'render'));
     // pannello "Luce": anteprima di ora e meteo (non cambia nulla in Home Assistant)
@@ -456,6 +459,30 @@ input[type=range]{width:100%}
     } catch (e) { console.warn('casa3d impostazioni', e); }
     history.pushState(null, '', '/config/dashboard');
     window.dispatchEvent(new CustomEvent('location-changed', { detail: { replace: false } }));
+  }
+  // il configuratore si vede solo agli amministratori e solo se c'è la foto della casa
+  _editBtn() {
+    const b = this._$ && this._$('#edit'); if (!b) return;
+    b.hidden = !(this._hass && this._hass.user && this._hass.user.is_admin && this._base && this._base.image);
+  }
+  async _openEditor() {
+    if (!(this._hass && this._hass.user && this._hass.user.is_admin)) return;
+    try { await import('./isola-live-editor.js' + VQ); }
+    catch (e) { console.error('isola-live: configuratore', e); this._toast('Configuratore non trovato (isola-live-editor.js)'); return; }
+    const t = this._saveTarget || { type: 'custom:isola-live', key: null, match: this._user };
+    const ed = document.createElement('isola-live-editor');
+    document.body.appendChild(ed);
+    ed.open({
+      hass: this._hass, config: this._base, target: t,
+      onSaved: card => { if (t.onSaved) t.onSaved(card); this._applyUser(ed.apply(this._user)); },
+      onRestored: card => { if (t.onSaved) { t.onSaved(card); this._applyUser({ image: card.image || this._user.image, ...(card[t.key] || {}) }); } else this._applyUser(card); },
+    });
+  }
+  // nuova configurazione dopo il salvataggio: la foto si ridisegna subito
+  _applyUser(u) {
+    this.setConfig(u);
+    if (this._hass) this.hass = this._hass;
+    if (this._rv) { this._rv.dispose(); this._rv = null; this._pins = null; this._mk = null; this._chips = null; this._en = null; this._flows = null; this._last = {}; this._initRender(); }
   }
   _upperCfg(b) {
     const u = b.upper || {};

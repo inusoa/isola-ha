@@ -6,7 +6,7 @@
 
 <p align="center">
 L'interfaccia di casa che si configura da sola: elegante sul telefono, viva sul tablet.<br>
-<img alt="Versione" src="https://img.shields.io/badge/versione-1.0.0--beta.2-5fd0bd?style=flat-square">
+<img alt="Versione" src="https://img.shields.io/badge/versione-1.0.0--beta.3-5fd0bd?style=flat-square">
 <img alt="HACS" src="https://img.shields.io/badge/HACS-repository%20personalizzato-41BDF5?style=flat-square">
 <img alt="Home Assistant" src="https://img.shields.io/badge/Home%20Assistant-2024%2B-18BCF2?style=flat-square">
 </p>
@@ -38,6 +38,7 @@ Da Isola si apre Isola Live con un tocco: la stessa casa, su qualsiasi schermo.
 - **Stanze:** ogni area di Home Assistant diventa una stanza con il suo ritaglio della foto, luci (con regolazione dell'intensità), clima, TV e dispositivi.
 - **Robot ed elettrodomestici:** aspirapolvere, tagliaerba e lavatrice compaiono quando lavorano, con avanzamento e comandi.
 - **Isola Live:** luci realistiche per stanza, ciclo giorno/notte dal sole vero, robot in movimento, presenze, fotovoltaico, modalità quadro notturna, schermo intero per tablet.
+- **Configuratore visivo:** luci, stanze, robot e sensori si mettono sulla foto con un dito e si salvano nella dashboard, senza scrivere YAML.
 
 > **Versione beta.** Funziona con i dati di qualsiasi casa, ma è giovane: se qualcosa non viene trovato o non si vede bene, apri una segnalazione (Issue) con uno screenshot.
 
@@ -72,7 +73,7 @@ HACS aggiunge da solo la risorsa `/hacsfiles/isola-ha/isola-ha.js`, che carica s
 <summary><b>In alternativa: installazione a mano (senza HACS)</b></summary>
 
 1. Scarica questo repository (pulsante verde **Code** › **Download ZIP**) ed estrailo.
-2. Copia i quattro file della cartella `dist` (`isola-ha.js`, `isola-mobile.js`, `isola-live.js`, `isola-live-render.js`) in `/config/www/isola-ha/` di Home Assistant, per esempio con l'add-on **File editor**, **Studio Code Server** o **Samba**.
+2. Copia i cinque file della cartella `dist` (`isola-ha.js`, `isola-mobile.js`, `isola-live.js`, `isola-live-render.js`, `isola-live-editor.js`) in `/config/www/isola-ha/` di Home Assistant, per esempio con l'add-on **File editor**, **Studio Code Server** o **Samba**.
    Se la cartella `www` non esisteva, **riavvia Home Assistant** una volta.
 3. Attiva la **Modalità avanzata**: tocca il tuo nome in basso a sinistra (Profilo) e accendi *Modalità avanzata*.
 4. Vai in **Impostazioni › Dashboard**, menu **⋮** in alto a destra › **Risorse** › **Aggiungi risorsa**:
@@ -150,7 +151,30 @@ room_crops:
    ```
 3. Salva. Vedrai la casa con la barra in basso che contiene già luci, robot e persone trovate da sole.
 
-**Ora metti le cose al loro posto sulla foto.** Ogni elemento si sposta con `px: [x, y]` (pixel della foto). Le luci e i robot si riconoscono dall'`id`, che è il nome dell'entità senza il dominio (`light.lampadario_soggiorno` → `lampadario_soggiorno`):
+### Passo 5b · Metti le cose al loro posto: il configuratore 📐
+
+Non serve scrivere coordinate. Se sei **amministratore** di Home Assistant, nella barra in alto di Isola Live trovi il pulsante **📐 Posiziona**.
+
+<p align="center"><img src="docs/isola-live-configurator.jpg" alt="Il configuratore di Isola Live su tablet e telefono" width="100%"></p>
+
+1. Tocca **Posiziona**: si apre il configuratore a schermo intero, con l'elenco di tutto quello che Isola ha trovato (luci, robot, porte e finestre, serrature, telecamere, movimento, fotovoltaico).
+2. Scegli un elemento e **tocca la foto** nel punto in cui si trova. I segnaposto si **trascinano** per aggiustarli.
+3. Per le **luci** tocca gli angoli della stanza, uno dopo l'altro, e chiudi toccando il primo punto: vedi subito la luce che resta dentro i muri. In alternativa puoi trascinare un **rettangolo**, oppure **usare la stanza di un'altra luce**. Gli angoli si agganciano a quelli delle stanze già disegnate, così le pareti in comune combaciano. Con il cursore scegli quanto è grande la luce.
+4. Per i **robot** tocca la base di ricarica, poi trascina uno o più rettangoli dove lavorano. Per il **fotovoltaico** tocca il riquadro e poi il punto della casa.
+5. **Scala:** tocca le due estremità di un muro di cui conosci la lunghezza e scrivi i metri. La scala si calcola da sola.
+6. Tocca **Salva** › **Salva nella dashboard**.
+
+Cosa succede quando salvi:
+- Viene aggiornata **solo la configurazione di questa card**: il resto della dashboard non si tocca.
+- **Prima** di salvare viene tenuta una copia della configurazione precedente. Con **Annulla il salvataggio** (o, più tardi, **Ripristina quella versione** nella finestra Salva) torni indietro con un tocco.
+- Funziona su **tablet, computer e telefono**: si sposta la foto con un dito, si ingrandisce con due dita o con i pulsanti **+ / −**. **↶** annulla l'ultima modifica.
+- Se apri Isola Live dal telefono (la scheda *Isola Live* di Isola), il configuratore salva dentro la card di Isola, nella chiave `casa_live`.
+- Se la dashboard è scritta in **YAML** o è generata automaticamente da Home Assistant, non si può salvare da qui: tocca **Copia YAML** e incolla il testo nella card.
+
+<details>
+<summary><b>Configurazione a mano (per chi preferisce lo YAML)</b></summary>
+
+Ogni elemento si posiziona con `px: [x, y]` (pixel della foto). Le luci e i robot si riconoscono dall'`id`, che è il nome dell'entità senza il dominio (`light.lampadario_soggiorno` → `lampadario_soggiorno`):
 
 ```yaml
          - type: custom:isola-live
@@ -178,8 +202,9 @@ room_crops:
 ```
 
 **Come calcolo `ppm`?** Misura in pixel un muro di cui conosci la lunghezza: se una parete di 10 m è lunga 340 pixel, `ppm` è 34.
+</details>
 
-**La stessa casa anche nel telefono:** in Isola (passo 3) aggiungi `casa_live:` con la stessa configurazione di Isola Live (senza `type`). Toccando la scheda *Isola Live* nella pagina Casa, si apre la mappa a schermo intero.
+**La stessa casa anche nel telefono:** in Isola (passo 3) aggiungi `casa_live:` con la stessa configurazione di Isola Live (senza `type`), oppure usa il configuratore da lì. Toccando la scheda *Isola Live* nella pagina Casa, si apre la mappa a schermo intero.
 
 ### Passo 6 · Prepara il tablet
 
@@ -252,7 +277,9 @@ Isola riconosce da sola gli script che si chiamano come *esco*, *notte/buonanott
 | La foto non si vede | Controlla che il file sia in `/config/www/isola/` e l'indirizzo in `/local/isola/…`. Se la cartella `www` è nuova, riavvia Home Assistant. |
 | Una stanza o un dispositivo manca | Assegna il dispositivo a un'**Area** in Home Assistant. Le entità nascoste o di diagnostica vengono ignorate di proposito. |
 | Il tablet resta a schermo intero e non riesco a modificare | Apri la dashboard con `?nokiosk` alla fine dell'indirizzo. |
-| La luce "esce" dalla stanza | Aggiungi `room:` alla luce con il contorno della stanza in pixel. |
+| La luce "esce" dalla stanza | Nel configuratore apri la luce › **Stanza** e disegna il contorno (oppure aggiungi `room:` a mano). |
+| Non vedo il pulsante 📐 Posiziona | Compare solo agli **amministratori** di Home Assistant e solo se la card ha la foto (`image`). |
+| "Questa dashboard non si può modificare da qui" | La dashboard è in YAML o generata automaticamente: tocca **Copia YAML** e incollalo nella card, oppure prendi il controllo della dashboard. |
 
 ---
 
