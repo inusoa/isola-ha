@@ -6,9 +6,16 @@
 
 <p align="center">
 The home interface that sets itself up: elegant on your phone, alive on your tablet.<br>
-<img alt="Version" src="https://img.shields.io/badge/version-1.0.0--beta.3-5fd0bd?style=flat-square">
-<img alt="HACS" src="https://img.shields.io/badge/HACS-custom%20repository-41BDF5?style=flat-square">
-<img alt="Home Assistant" src="https://img.shields.io/badge/Home%20Assistant-2024%2B-18BCF2?style=flat-square">
+<a href="https://github.com/inusoa/isola-ha/releases/latest"><img alt="Version" src="https://img.shields.io/github/v/release/inusoa/isola-ha?include_prereleases&style=flat-square&color=5fd0bd&label=version"></a>
+<a href="https://github.com/inusoa/isola-ha/releases"><img alt="Download" src="https://img.shields.io/github/downloads/inusoa/isola-ha/total?style=flat-square&color=f5b544&label=downloads"></a>
+<a href="https://github.com/inusoa/isola-ha/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/inusoa/isola-ha?style=flat-square&color=f3efe7&label=stars"></a>
+<a href="https://hacs.xyz"><img alt="HACS" src="https://img.shields.io/badge/HACS-custom%20repository-41BDF5?style=flat-square"></a>
+<a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-8bc34a?style=flat-square"></a>
+</p>
+
+<p align="center">
+<a href="https://inusoa.github.io/isola-ha/"><img alt="Try the live demo" src="https://img.shields.io/badge/%E2%96%B6%20Try%20the%20live%20demo-5fd0bd?style=for-the-badge&logo=homeassistant&logoColor=white"></a>
+<a href="https://buymeacoffee.com/inusoa"><img alt="Buy me a coffee" src="https://img.shields.io/badge/Buy%20me%20a%20coffee-ffdd00?style=for-the-badge&logo=buymeacoffee&logoColor=black"></a>
 </p>
 
 > **Language note:** the interface is currently in **Italian**. English labels are on the roadmap.
@@ -74,8 +81,8 @@ HACS adds the resource `/hacsfiles/isola-ha/isola-ha.js` automatically; it loads
 <details>
 <summary><b>Alternative: manual installation (without HACS)</b></summary>
 
-1. Download this repository (green **Code** button › **Download ZIP**) and unzip it.
-2. Copy the five files in the `dist` folder (`isola-ha.js`, `isola-mobile.js`, `isola-live.js`, `isola-live-render.js`, `isola-live-editor.js`) to `/config/www/isola-ha/` in Home Assistant, e.g. with the **File editor**, **Studio Code Server** or **Samba** add-on.
+1. Open the [latest release](https://github.com/inusoa/isola-ha/releases/latest) and, at the bottom under **Assets**, download the five `.js` files (`isola-ha.js`, `isola-mobile.js`, `isola-live.js`, `isola-live-render.js`, `isola-live-editor.js`).
+2. Copy them to `/config/www/isola-ha/` in Home Assistant, e.g. with the **File editor**, **Studio Code Server** or **Samba** add-on.
    If the `www` folder didn't exist, **restart Home Assistant** once.
 3. Turn on **Advanced mode**: tap your name bottom left (Profile) and enable *Advanced mode*.
 4. Go to **Settings › Dashboards**, top-right **⋮** menu › **Resources** › **Add resource**:
@@ -287,6 +294,10 @@ Isola detects scripts named like *leave/away*, *night/good night*, *morning*, *h
 
 ## Try it without installing
 
+👉 **[Open the live demo](https://inusoa.github.io/isola-ha/)**: Isola and Isola Live with the demo home, right in your browser.
+
+Or locally:
+
 The [`demo`](demo) folder contains the *Rossi family* demo home with simulated data: `demo.html` for Isola and `demo-live.html` for Isola Live. Serve it with a small local server, e.g. from the repository folder:
 
 ```bash
@@ -298,4 +309,14 @@ All images on this page were made with the demo home.
 
 ---
 
-© Isola – all rights reserved. Use permitted only under licence.
+## Support Isola
+
+Isola is free and open source, and it will stay that way. If it makes your home nicer to live in, a coffee helps me keep improving it: new features, an English interface, more devices supported.
+
+<a href="https://buymeacoffee.com/inusoa"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-ffdd00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy me a coffee"></a>
+
+Ideas, bugs or requests: open an [issue](https://github.com/inusoa/isola-ha/issues).
+
+---
+
+Released under the [MIT](LICENSE) license.
