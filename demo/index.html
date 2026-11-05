@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Isola for Home Assistant · live demo</title>
+<meta name="description" content="Try Isola, the self-configuring Home Assistant interface for phones and wall tablets, right in your browser. Simulated demo home, nothing to install.">
+<meta property="og:title" content="Isola for Home Assistant · live demo">
+<meta property="og:description" content="Your home as a living map: lights inside real rooms, day/night cycle, robots, people. Try it in your browser.">
+<meta property="og:image" content="https://raw.githubusercontent.com/inusoa/isola-ha/main/docs/hero.jpg">
+<style>
+:root{--bg:#0b0f12;--surf:#151b1f;--line:rgba(243,239,231,.11);--tx:#f3efe7;--mut:rgba(243,239,231,.64);--sea:#5fd0bd;--sun:#f5b544}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--tx);font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+body{background:radial-gradient(900px 600px at 85% -10%,rgba(245,181,68,.16),transparent 60%),radial-gradient(900px 700px at 0% 110%,rgba(95,208,189,.16),transparent 60%),var(--bg);min-height:100svh}
+a{color:inherit}
+.wrap{max-width:1500px;margin:0 auto;padding:28px 24px 40px}
+header{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.logo{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;background:linear-gradient(140deg,#6ee0cb,#2f8f80);box-shadow:0 12px 30px -8px rgba(95,208,189,.55);flex:none}
+h1{margin:0;font-size:clamp(26px,3.4vw,40px);letter-spacing:-.03em;line-height:1.05}
+h1 small{display:block;font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);font-weight:600;margin-top:6px}
+.acts{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--line);background:var(--surf);text-decoration:none;font-weight:700;font-size:14.5px}
+.btn.bmc{background:#ffdd00;color:#111;border-color:transparent}
+.btn.pri{background:var(--sea);color:#08201b;border-color:transparent}
+.lead{max-width:860px;color:var(--mut);font-size:16.5px;line-height:1.55;margin:18px 0 6px}
+.lead b{color:var(--tx)}
+.note{display:inline-flex;gap:8px;align-items:center;font-size:13px;color:var(--mut);margin-top:6px}
+.note i{width:8px;height:8px;border-radius:4px;background:var(--sun)}
+.stage{display:grid;grid-template-columns:auto minmax(0,1fr);gap:34px;align-items:start;margin-top:26px}
+.col h2{margin:0 0 4px;font-size:18px}
+.col p{margin:0 0 14px;color:var(--mut);font-size:14px}
+.col p a{color:var(--sea);font-weight:600}
+.phone{width:min(360px,86vw);aspect-ratio:390/844;border-radius:52px;padding:10px;background:linear-gradient(145deg,#3b4046,#16191c 55%,#2a2e33);box-shadow:0 0 0 1.5px #4a5056 inset,0 50px 100px -25px rgba(0,0,0,.9)}
+.tablet{width:100%;aspect-ratio:1280/800;border-radius:34px;padding:18px;background:linear-gradient(145deg,#2a2f34,#15181b 60%,#202428);box-shadow:0 0 0 1.5px #3a4046 inset,0 60px 120px -30px rgba(0,0,0,.85)}
+.scr{position:relative;width:100%;height:100%;overflow:hidden;background:#000}
+.phone .scr{border-radius:43px}
+.tablet .scr{border-radius:16px}
+.scr iframe{position:absolute;left:0;top:0;border:0;transform-origin:0 0;background:#0d1114}
+.feat{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-top:34px}
+.feat div{padding:16px;border-radius:16px;background:rgba(255,255,255,.035);border:1px solid var(--line);font-size:14px;color:var(--mut);line-height:1.45}
+.feat b{display:block;color:var(--tx);font-size:15px;margin-bottom:4px}
+footer{margin-top:34px;color:var(--mut);font-size:13px;display:flex;gap:14px;flex-wrap:wrap}
+@media (max-width:980px){.stage{grid-template-columns:1fr}.phone{margin:0 auto}.acts{margin-left:0;width:100%}}
+</style></head>
+<body><div class="wrap">
+<header>
+  <span class="logo"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0b1512" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5.5h4V20"/></svg></span>
+  <h1>Isola<small>for Home Assistant · live demo</small></h1>
+  <div class="acts">
+    <a class="btn pri" href="https://github.com/inusoa/isola-ha">Install from GitHub</a>
+    <a class="btn bmc" href="https://buymeacoffee.com/inusoa">☕ Buy me a coffee</a>
+  </div>
+</header>
+<p class="lead"><b>Try it right here.</b> This is a simulated home (the Rossi family): tap the rooms, switch lights on, open the alarm, drag the light-and-weather slider in Isola Live, or tap <b>📐 Posiziona</b> to place things on the photo. Nothing is installed and nothing leaves your browser.</p>
+<span class="note"><i></i>The interface is currently in Italian. English is on its way.</span>
+
+<div class="stage">
+  <div class="col">
+    <h2>📱 Isola · phone</h2>
+    <p>Your home in your pocket. <a href="demo.html">Open full screen ↗</a></p>
+    <div class="phone"><div class="scr"><iframe id="fp" src="demo.html" width="390" height="844" title="Isola demo" loading="lazy"></iframe></div></div>
+  </div>
+  <div class="col">
+    <h2>🖥️ Isola Live · wall tablet</h2>
+    <p>Your home seen from above, alive. <a href="demo-live.html">Open full screen ↗</a></p>
+    <div class="tablet"><div class="scr"><iframe id="ft" src="demo-live.html" width="1280" height="800" title="Isola Live demo" loading="lazy"></iframe></div></div>
+  </div>
+</div>
+
+<div class="feat">
+  <div><b>Sets itself up</b>Reads your Home Assistant areas and devices and builds rooms, people, energy, security and robots on its own.</div>
+  <div><b>A living map</b>Lights glow inside the real rooms, the sun moves through the day, robots move and people come and go.</div>
+  <div><b>No YAML</b>Place lights, rooms and sensors on the photo with your finger and save straight to your dashboard.</div>
+  <div><b>Free and open source</b>MIT licence, installable with HACS. If you like it, a coffee keeps it growing.</div>
+</div>
+<footer><span>© Isola · MIT licence</span><a href="https://github.com/inusoa/isola-ha">GitHub</a><a href="https://github.com/inusoa/isola-ha/issues">Ideas and bugs</a><a href="https://buymeacoffee.com/inusoa">Buy me a coffee</a></footer>
+</div>
+<script>
+// i due schermi dimostrativi in scala, a qualsiasi larghezza
+function fitFrames() {
+  for (const [id, w] of [['fp', 390], ['ft', 1280]]) {
+    const f = document.getElementById(id), box = f.parentElement;
+    f.style.transform = `scale(${box.clientWidth / w})`;
+  }
+}
+addEventListener('resize', fitFrames); fitFrames(); setTimeout(fitFrames, 300);
+</script>
+</body></html>

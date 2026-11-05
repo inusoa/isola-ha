@@ -50,6 +50,11 @@ const hass = {
   states: S, entities: E, areas: A, devices: {}, language: 'it', locale: { language: 'it' },
   user: { name: 'Marco', is_admin: true },
   callWS: async m => {
+    // dashboard simulata: il configuratore salva qui, solo in questa pagina
+    if (m.type === 'lovelace/config') return JSON.parse(JSON.stringify(window.__dash));
+    if (m.type === 'lovelace/config/save') { window.__dash = JSON.parse(JSON.stringify(m.config)); return null; }
+    if (m.type === 'frontend/get_user_data') return { value: (window.__ud || {})[m.key] ?? null };
+    if (m.type === 'frontend/set_user_data') { (window.__ud ||= {})[m.key] = m.value; return null; }
     if (m.type === 'history/history_during_period') { const out = {}; (m.entity_ids || []).forEach(id => { out[id] = [{ s: S[id]?.state || '0', lu: Date.now() / 1000 - 3600 }]; }); return out; }
     if (m.type === 'logbook/get_events') return [];
     if (m.type === 'recorder/statistics_during_period') return {};
@@ -59,9 +64,9 @@ const hass = {
   connection: { subscribeMessage: (cb, msg) => { setTimeout(() => cb({ forecast: [] }), 30); return Promise.resolve(() => {}); } },
   hassUrl: p => p,
 };
-await import('../dist/isola-live.js');
+await import('../src/isola-live.js');
 const c = document.getElementById('c');
-c.setConfig({
+window.__cfg = { type: 'custom:isola-live', ...{
   title: 'Casa Rossi', image: './casa-demo.jpg', kiosk: location.hash.includes('kiosk'), night_dim: true, ppm: 34, image_north: 20,
   lights: [
     { id: 'lampadario_soggiorno', px: [700, 230], room: [[510, 124], [900, 124], [900, 506], [650, 506], [650, 336], [510, 336]], radius: 4.5 },
@@ -83,7 +88,9 @@ c.setConfig({
   energy: { px: [470, 600], house_px: [700, 330] },
   presence: { 'binary_sensor.movimento_soggiorno': [760, 300] }, presence_default: [760, 300],
   arrival_path: [[685, 768], [685, 600], [690, 525]],
-});
+} };
+window.__dash = { title: 'Demo', views: [{ title: 'Demo', type: 'panel', cards: [window.__cfg] }] };
+c.setConfig(window.__cfg);
 c.hass = hass;
 window.__hass = hass; window.__S = S;
 window.__set = (id, st, at) => { S[id] = { ...S[id], state: st, attributes: { ...(S[id]?.attributes || {}), ...(at || {}) }, last_changed: new Date().toISOString() }; c.hass = { ...hass, states: { ...S } }; };

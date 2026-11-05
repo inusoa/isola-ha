@@ -4,7 +4,7 @@
  * e le zone di lavoro dei robot, misura la scala e salva davvero nella dashboard
  * (con copia di sicurezza della configurazione precedente e ripristino).
  */
-const EDITOR_VERSION = '1.0.0-beta.3';
+const EDITOR_VERSION = '1.0.0-beta.4';
 const BACKUP_KEY = 'isola_live_backup';
 const DEF_RADIUS = 4.6;
 

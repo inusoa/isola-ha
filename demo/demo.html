@@ -55,6 +55,11 @@ const hass = {
   states: S, entities: E, areas: A, devices: {}, language: 'it', locale: { language: 'it' },
   user: { name: 'Marco', is_admin: true },
   callWS: async m => {
+    // dashboard simulata: il configuratore salva qui, solo in questa pagina
+    if (m.type === 'lovelace/config') return JSON.parse(JSON.stringify(window.__dash));
+    if (m.type === 'lovelace/config/save') { window.__dash = JSON.parse(JSON.stringify(m.config)); return null; }
+    if (m.type === 'frontend/get_user_data') return { value: (window.__ud || {})[m.key] ?? null };
+    if (m.type === 'frontend/set_user_data') { (window.__ud ||= {})[m.key] = m.value; return null; }
     if (m.type === 'history/history_during_period') { const out = {}; (m.entity_ids || []).forEach(id => { out[id] = [{ s: S[id]?.state || '0', lu: Date.now() / 1000 - 3600 }]; }); return out; }
     if (m.type === 'logbook/get_events') return [];
     if (m.type === 'recorder/statistics_during_period') return {};
@@ -64,13 +69,15 @@ const hass = {
   connection: { subscribeMessage: (cb, msg) => { setTimeout(() => cb({ forecast: [] }), 30); return Promise.resolve(() => {}); } },
   hassUrl: p => p,
 };
-await import('../dist/isola-mobile.js');
-await import('../dist/isola-live.js');
+await import('../src/isola-mobile.js');
+await import('../src/isola-live.js');
 const c = document.getElementById('c');
-c.setConfig({
+window.__cfg = { type: 'custom:isola-mobile', ...{
   image: './casa-demo.jpg',
   room_crops: { Soggiorno: [510, 120, 900, 510], Cucina: [910, 120, 1130, 510], Camera: [240, 120, 500, 330], Cameretta: [410, 340, 640, 510], Bagno: [240, 340, 400, 510], Giardino: [760, 520, 1340, 740] },
-});
+} };
+window.__dash = { title: 'Demo', views: [{ title: 'Demo', type: 'panel', cards: [window.__cfg] }] };
+c.setConfig(window.__cfg);
 c.hass = hass;
 window.__hass = hass;
 </script></body></html>

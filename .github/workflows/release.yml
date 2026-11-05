@@ -1,0 +1,19 @@
+name: Release files
+
+# a ogni nuova release allega i file della card: HACS li scarica da qui e GitHub li conta
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Allega i file .js alla release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" src/*.js --clobber
