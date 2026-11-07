@@ -58,14 +58,20 @@ export function layout(floors, opts = {}) {
       if (!arr.length) return;
       if (arr.length === 1) { rooms.push({ ...arr[0], x, z, w, d }); return; }
       const tot = arr.reduce((s, a) => s + a.v, 0);
-      // taglio vicino a metà del peso, con un po' di caso
-      let acc = 0, k = 1, best = Infinity; const goal = tot * (0.42 + R() * 0.16);
-      for (let i = 1; i < arr.length; i++) { acc += arr[i - 1].v; if (Math.abs(acc - goal) < best) { best = Math.abs(acc - goal); k = i; } }
-      const A1 = arr.slice(0, k), A2 = arr.slice(k), f = A1.reduce((s, a) => s + a.v, 0) / tot;
-      // orientamento del taglio: niente stanze a corridoio (proporzioni oltre 1:2,6)
+      // si provano tutti i tagli possibili (punto e direzione) e si sceglie quello con le stanze più proporzionate,
+      // con un po' di caso tra quelli quasi equivalenti; una stanza singola non deve diventare un corridoio
       const asp = (a, b) => Math.max(a / b, b / a);
-      const badV = Math.max(asp(w * f, d), asp(w * (1 - f), d)), badH = Math.max(asp(w, d * f), asp(w, d * (1 - f)));
-      const vertical = Math.abs(badV - badH) < 0.35 ? (w / d > 1.25 ? true : d / w > 1.25 ? false : R() < 0.5) : badV < badH;
+      const pen = (n, a, b) => { const r = asp(a, b); return n === 1 ? (r > 2 ? (r - 2) * 4 : 0) + Math.max(0, 2.6 - Math.min(a, b)) * 3 : Math.max(0, r - 2.6); };
+      let best = null;
+      for (let i = 1; i < arr.length; i++) {
+        const f0 = arr.slice(0, i).reduce((s, a) => s + a.v, 0) / tot, n1 = i, n2 = arr.length - i;
+        for (const vert of [true, false]) {
+          const sc = vert ? pen(n1, w * f0, d) + pen(n2, w * (1 - f0), d) : pen(n1, w, d * f0) + pen(n2, w, d * (1 - f0));
+          const score = sc + Math.abs(f0 - 0.5) * 0.6 + R() * 0.25;
+          if (!best || score < best.score) best = { score, k: i, vert, f: f0 };
+        }
+      }
+      const k = best.k, A1 = arr.slice(0, k), A2 = arr.slice(k), f = best.f, vertical = best.vert;
       const snap = v => Math.round(v * 10) / 10;
       if (vertical) { const w1 = snap(w * f); split(A1, x, z, w1, d, depth + 1); split(A2, x + w1, z, w - w1, d, depth + 1); }
       else { // le stanze "di facciata" (A1) restano davanti (sud = z alto)
