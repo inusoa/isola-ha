@@ -4,7 +4,7 @@ import { i18nAttach, i18nLang, i18nLoc } from './isola-i18n.js';
  * Isola Live  = tablet / hub fisso (questa card: type: custom:isola-live)
  * Foto della casa dall'alto (render) + luci, robot, persone, sensori posizionati in pixel sulla foto.
  */
-const VERSION = '1.0.0-beta.5';
+const VERSION = '1.0.0-beta.6';
 const VQ = new URL(import.meta.url).search;
 
 // ------------------------------------------------------------------ configurazione predefinita
@@ -235,8 +235,18 @@ class Casa3DCard extends HTMLElement {
         const firstTime = this._autoKey === null; this._autoKey = key;
         const a = liveAuto(h), u = this._user;
         try {
-          this._setCfg({ ...a, ...u, lights: mergeById(a.lights, u.lights), devices: mergeById(a.devices, u.devices), people: u.people || a.people,
-            energy: { ...a.energy, ...(u.energy || {}) }, weather: u.weather || a.weather, alarm: u.alarm || a.alarm });
+          // senza foto: la casa 3D generata dalle aree fa da foto e porta le posizioni automatiche
+          const H = this._houseOn() ? this._houseFor(h) : null, h0 = H && H.floors[0] && H.floors[0].cfg, h1 = H && H.floors[1];
+          const up1 = h1 ? new Set(h1.cfg.lights.map(l => l.id)) : new Set();
+          const al = h0 ? mergeById(a.lights.filter(l => !up1.has(l.id)), h0.lights) : a.lights;
+          const ad = h0 ? mergeById(a.devices, h0.devices) : a.devices;
+          this._setCfg({ ...a, ...(h0 ? { image: H.floors[0].url, ppm: h0.ppm, arrival_path: h0.arrival_path, presence: h0.presence } : this._houseOn() ? { image: null } : {}), ...u,
+            lights: mergeById(al, u.lights), devices: mergeById(ad, u.devices), people: u.people || a.people,
+            sensors: h0 ? mergeById(h0.sensors, u.sensors) : u.sensors,
+            presence: h0 ? { ...h0.presence, ...(u.presence || {}) } : u.presence,
+            energy: { ...a.energy, ...((h0 && h0.energy) || {}), ...(u.energy || {}) }, weather: u.weather || a.weather, alarm: u.alarm || a.alarm,
+            ...(h1 && u.floors === undefined ? { floors: true } : {}),
+            upper: u.upper || (h1 ? { image: h1.url, short: h1.name || '1° piano', lights: mergeById(a.lights.filter(l => up1.has(l.id)), h1.cfg.lights), sensors: h1.cfg.sensors.filter(m => m.type === 'window'), devices: mergeById(a.devices.filter(d => h1.cfg.devices.some(x => x.id === d.id)), h1.cfg.devices) } : undefined) });
           if (!firstTime && this._rv) { this._rv.dispose(); this._rv = null; this._pins = null; this._mk = null; this._chips = null; this._en = null; this._flows = null; this._last = {}; this._initRender(); }
         } catch (e) { console.error('isola-live: configurazione automatica', e); }
         if (this._waitHass) { this._waitHass = false; this._initRender(); }
@@ -462,6 +472,50 @@ input[type=range]{width:100%}
     history.pushState(null, '', '/config/dashboard');
     window.dispatchEvent(new CustomEvent('location-changed', { detail: { replace: false } }));
   }
+  // ---------------------------------------------------------------- casa 3D automatica
+  _houseOn() { const u = this._user || {}; return !u.image && u.house !== false && u.auto !== false; }
+  _houseSpec(h, opts) {
+    const H = this._houseLib;
+    const floors = H ? H.floorsFromHass(h) : [];
+    const o = { ...((this._user && this._user.house) || {}), ...(opts || {}) };
+    return { floors: floors.slice(0, 2), seed: o.seed, swaps: o.swaps || [], key: 'isola_house_v1_' + JSON.stringify([floors.slice(0, 2).map(f => [f.id, f.areas.map(a => a.area_id + ':' + a.name)]), o.seed ?? null, o.swaps || [], Object.keys(h.states || {}).filter(x => /^(light|vacuum|lawn_mower|lock|camera)\./.test(x) || /window|door|motion|occupancy|presence/.test(h.states[x].attributes?.device_class || '')).length]) };
+  }
+  // restituisce la casa pronta (dalla memoria) oppure la prepara e ridisegna quando è pronta
+  _houseFor(h) {
+    if (!this._houseLib) { this._houseLoad(); return null; }
+    const sp = this._houseSpec(h);
+    if (this._house && this._house.key === sp.key) return this._house;
+    if (!this._houseBusy) this._houseMake(sp).then(H => { this._house = H; this._houseErr = false; this._autoKey = null; if (this._hass) this.hass = this._hass; if (this._rv) { this._rv.dispose(); this._rv = null; this._pins = null; this._mk = null; this._chips = null; this._en = null; this._flows = null; this._last = {}; } this._initRender(); }).catch(e => { console.error('isola-live: casa 3D', e); this._houseErr = true; this._initRender(); });
+    return this._house || null;
+  }
+  async _houseLoad() {
+    if (this._houseLoading) return; this._houseLoading = true;
+    try { const [T, H] = await Promise.all([import('./three.module.min.js' + VQ), import('./isola-house.js' + VQ)]); this._three = T; this._houseLib = H; this._autoKey = null; if (this._hass) this.hass = this._hass; }
+    catch (e) { console.error('isola-live: casa 3D (file mancanti?)', e); this._houseErr = true; this._initRender(); }
+  }
+  async _houseMake(sp) {
+    try { const c = JSON.parse(localStorage.getItem(sp.key) || 'null'); if (c && c.floors) { this._tHouse = 'cache'; return { key: sp.key, ...c }; } } catch (e) { }
+    this._tHouse = 'nuova';
+    this._houseBusy = true;
+    try {
+      const H = this._houseLib, T = this._three, plan = H.layout(sp.floors, { seed: sp.seed, swaps: sp.swaps });
+      const floors = [];
+      for (let i = 0; i < plan.floors.length; i++) {
+        const shot = await H.renderPhoto(T, H.buildScene(T, plan, i), plan, { width: 1600, height: 900, shadowSize: 2048 });
+        floors.push({ url: shot.url, name: plan.floors[i].name, cfg: H.liveConfig(plan, i, shot.project, this._hass) });
+        await new Promise(r => setTimeout(r, 30));
+      }
+      const out = { floors, seed: sp.seed, swaps: sp.swaps };
+      try { localStorage.setItem(sp.key, JSON.stringify(out)); } catch (e) { try { for (const k of Object.keys(localStorage)) if (k.startsWith('isola_house_v1_')) localStorage.removeItem(k); localStorage.setItem(sp.key, JSON.stringify(out)); } catch (e2) { } }
+      return { key: sp.key, ...out };
+    } finally { this._houseBusy = false; }
+  }
+  // per il configuratore: un'altra disposizione, senza toccare quella mostrata
+  async _houseRegen(opts) {
+    const sp = this._houseSpec(this._hass, opts);
+    const H = await this._houseMake(sp);
+    return { url: H.floors[0].url, cfg: H.floors[0].cfg, rooms: H.floors[0].cfg.rooms };
+  }
   // il configuratore si vede solo agli amministratori e solo se c'è la foto della casa
   _editBtn() {
     const b = this._$ && this._$('#edit'); if (!b) return;
@@ -474,8 +528,9 @@ input[type=range]{width:100%}
     const t = this._saveTarget || { type: 'custom:isola-live', key: null, match: this._user };
     const ed = document.createElement('isola-live-editor');
     document.body.appendChild(ed);
+    const hz = this._houseOn() && this._house && this._house.floors[0] ? { opts: { ...((this._user && this._user.house) || {}) }, cfg: this._house.floors[0].cfg, rooms: this._house.floors[0].cfg.rooms, regen: o => this._houseRegen(o) } : null;
     ed.open({
-      hass: this._hass, config: this._base, target: t,
+      hass: this._hass, config: this._base, target: t, house: hz,
       onSaved: card => { if (t.onSaved) t.onSaved(card); this._applyUser(ed.apply(this._user)); },
       onRestored: card => { if (t.onSaved) { t.onSaved(card); this._applyUser({ image: card.image || this._user.image, ...(card[t.key] || {}) }); } else this._applyUser(card); },
     });
@@ -584,6 +639,7 @@ input[type=range]{width:100%}
   }
   async _initRender() {
     if (this._user && this._user.auto !== false && !this._hass) { this._waitHass = true; return; }
+    if (!this._config.image && this._houseOn()) { const ld = this._$('#load'); if (ld) { ld.hidden = false; ld.innerHTML = this._houseErr ? 'Non riesco a disegnare la casa 3D su questo dispositivo: aggiungi la foto della casa (<b>image:</b>) nella configurazione della card' : 'Disegno la casa 3D dalle tue stanze…'; } this._renderChips(); return; }
     if (!this._config.image) { const ld = this._$('#load'); if (ld) { ld.hidden = false; ld.innerHTML = 'Aggiungi la foto della casa: <b>image: /local/isola/casa.jpg</b> nella configurazione della card'; } this._renderChips(); return; }
     this._loading = true;
     const ld = this._$('#load'); if (ld) { ld.hidden = false; ld.textContent = 'Caricamento della casa…'; }

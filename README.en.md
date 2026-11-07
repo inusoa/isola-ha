@@ -58,7 +58,7 @@ From Isola you open Isola Live with one tap: the same home, on any screen.
 - Home Assistant **2024 or newer** (latest version recommended).
 - Your rooms created as **Areas** (Settings › Areas, labels & zones) and your devices assigned to them: this is how Isola knows what is where.
 - To install with HACS: [HACS](https://hacs.xyz) already installed.
-- For Isola Live: a **top-down photo or render of your home** (JPG or PNG, landscape; a render from Planner 5D, Sweet Home 3D or a generated image works great).
+- For Isola Live: nothing, the 3D home draws itself from your areas. For a photographic look, a **top-down photo or render of your home** (JPG or PNG, landscape; a render from Planner 5D, Sweet Home 3D or a generated image works great).
 
 ---
 
@@ -81,7 +81,7 @@ HACS adds the resource `/hacsfiles/isola-ha/isola-ha.js` automatically; it loads
 <details>
 <summary><b>Alternative: manual installation (without HACS)</b></summary>
 
-1. Open the [latest release](https://github.com/inusoa/isola-ha/releases/latest) and, at the bottom under **Assets**, download the five `.js` files (`isola-ha.js`, `isola-mobile.js`, `isola-live.js`, `isola-live-render.js`, `isola-live-editor.js`).
+1. Open the [latest release](https://github.com/inusoa/isola-ha/releases/latest) and, at the bottom under **Assets**, download **all** the `.js` files (`isola-ha.js`, `isola-mobile.js`, `isola-live.js`, `isola-live-render.js`, `isola-live-editor.js`, `isola-i18n.js`, `isola-house.js`, `three.module.min.js`).
 2. Copy them to `/config/www/isola-ha/` in Home Assistant, e.g. with the **File editor**, **Studio Code Server** or **Samba** add-on.
    If the `www` folder didn't exist, **restart Home Assistant** once.
 3. Turn on **Advanced mode**: tap your name bottom left (Profile) and enable *Advanced mode*.
@@ -141,6 +141,21 @@ room_crops:
 ```
 
 > **How do I find the pixels?** Open the photo in any image editor (Preview on Mac, Paint on Windows, Photopea online): moving the mouse shows the x, y coordinates. The top-left corner is 0, 0.
+
+### No photo? The automatic 3D home 🏠
+
+No photo or render of your home? **You don't need one.** If the card has no `image`, Isola Live builds a 3D home from your rooms on its own:
+
+- one room per Home Assistant **area**, with floor and furniture chosen from its name (bedroom, kids room, living room, kitchen, bathroom, office, laundry, garage…);
+- one model per Home Assistant **floor** (up to two, with buttons to switch);
+- the **garage** outside the main block, a **garden** around it if you have an outdoor area;
+- lights, windows, lock, robots, motion and solar **already in place**.
+
+The layout is random but always the same for your home. In the configurator (📐 Place) you'll find **Regenerate**, for another layout, and **Swap**: tap two rooms and they trade places. The result is saved in the card (`house:`).
+
+The home is drawn on the device the first time (a few seconds, longer on a budget tablet) and then kept in memory. It is not your real floor plan: for that, add your own photo with `image:`.
+
+Try it: [demo without a photo](https://inusoa.github.io/isola-ha/demo/demo-auto.html?lang=en).
 
 ### Step 5 · Isola Live on the tablet
 
@@ -263,7 +278,8 @@ Isola detects scripts named like *leave/away*, *night/good night*, *morning*, *h
 
 | Key | Example | What it does |
 |---|---|---|
-| `image` | `/local/isola/casa.jpg` | The top-down photo of your home |
+| `image` | `/local/isola/casa.jpg` | The top-down photo of your home (none: automatic 3D home) |
+| `house` | `{ seed: 123, swaps: [[kitchen, bedroom]] }` | Automatic 3D home: layout and swapped rooms (written by the configurator). `house: false` turns it off |
 | `ppm` | `34` | Photo pixels per metre |
 | `kiosk` | `true` | Full screen on the tablet |
 | `night_dim` | `true` | Dims the screen at night |
@@ -321,4 +337,4 @@ Ideas, bugs or requests: open an [issue](https://github.com/inusoa/isola-ha/issu
 
 ---
 
-Released under the [MIT](LICENSE) license.
+Released under the [MIT](LICENSE) license. Includes [three.js](https://threejs.org) (MIT) for the automatic 3D home.

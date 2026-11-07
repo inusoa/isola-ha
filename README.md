@@ -58,7 +58,7 @@ Da Isola si apre Isola Live con un tocco: la stessa casa, su qualsiasi schermo.
 - Home Assistant **2024 o più recente** (consigliata l'ultima versione).
 - Le stanze di casa create come **Aree** (Impostazioni › Aree, etichette e zone) e i dispositivi assegnati alle aree: è da qui che Isola capisce cosa sta dove.
 - Per installare con HACS: [HACS](https://hacs.xyz) già installato.
-- Per Isola Live: una **foto o un render della casa vista dall'alto** (JPG o PNG, orizzontale; va benissimo un render di Planner 5D, Sweet Home 3D o un'immagine generata).
+- Per Isola Live: niente, la casa 3D si disegna da sola dalle aree. Per un risultato fotografico, una **foto o un render della casa vista dall'alto** (JPG o PNG, orizzontale; va benissimo un render di Planner 5D, Sweet Home 3D o un'immagine generata).
 
 ---
 
@@ -81,7 +81,7 @@ HACS aggiunge da solo la risorsa `/hacsfiles/isola-ha/isola-ha.js`, che carica s
 <details>
 <summary><b>In alternativa: installazione a mano (senza HACS)</b></summary>
 
-1. Apri l'[ultima release](https://github.com/inusoa/isola-ha/releases/latest) e, in fondo, sotto **Assets**, scarica i cinque file `.js` (`isola-ha.js`, `isola-mobile.js`, `isola-live.js`, `isola-live-render.js`, `isola-live-editor.js`).
+1. Apri l'[ultima release](https://github.com/inusoa/isola-ha/releases/latest) e, in fondo, sotto **Assets**, scarica **tutti** i file `.js` (`isola-ha.js`, `isola-mobile.js`, `isola-live.js`, `isola-live-render.js`, `isola-live-editor.js`, `isola-i18n.js`, `isola-house.js`, `three.module.min.js`).
 2. Copiali in `/config/www/isola-ha/` di Home Assistant, per esempio con l'add-on **File editor**, **Studio Code Server** o **Samba**.
    Se la cartella `www` non esisteva, **riavvia Home Assistant** una volta.
 3. Attiva la **Modalità avanzata**: tocca il tuo nome in basso a sinistra (Profilo) e accendi *Modalità avanzata*.
@@ -141,6 +141,21 @@ room_crops:
 ```
 
 > **Come trovo i pixel?** Apri la foto in un qualsiasi programma di grafica (Anteprima su Mac, Paint su Windows, Photopea online): spostando il mouse vedi le coordinate x, y. L'angolo in alto a sinistra è 0, 0.
+
+### Senza foto: la casa 3D automatica 🏠
+
+Non hai una foto o un render della casa? **Non serve.** Se nella card manca `image`, Isola Live costruisce da sola una casa 3D con le tue stanze:
+
+- una stanza per ogni **area** di Home Assistant, con pavimento e arredi presi dal nome (camera, cameretta, soggiorno, cucina, bagno, studio, lavanderia, garage…);
+- un modello per ogni **piano** di Home Assistant (fino a due, con i pulsanti per passare da uno all'altro);
+- il **garage** fuori dal blocco principale, il **giardino** intorno se hai un'area esterna;
+- luci, finestre, serratura, robot, movimento e fotovoltaico **già al loro posto**.
+
+La disposizione è casuale ma sempre la stessa per la tua casa. Nel configuratore (📐 Posiziona) trovi **Rigenera**, per un'altra disposizione, e **Scambia**: tocchi due stanze e si scambiano di posto. Il risultato si salva nella card (`house:`).
+
+La casa viene disegnata sul dispositivo la prima volta (pochi secondi, di più su un tablet economico) e poi resta in memoria. Non è la pianta vera: per quella aggiungi la tua foto con `image:`.
+
+Prova: [demo senza foto](https://inusoa.github.io/isola-ha/demo/demo-auto.html?lang=it).
 
 ### Passo 5 · Isola Live sul tablet
 
@@ -263,7 +278,8 @@ Isola riconosce da sola gli script che si chiamano come *esco*, *notte/buonanott
 
 | Chiave | Esempio | A cosa serve |
 |---|---|---|
-| `image` | `/local/isola/casa.jpg` | La foto della casa vista dall'alto |
+| `image` | `/local/isola/casa.jpg` | La foto della casa vista dall'alto (senza: casa 3D automatica) |
+| `house` | `{ seed: 123, swaps: [[cucina, camera]] }` | Casa 3D automatica: disposizione e stanze scambiate (lo scrive il configuratore). `house: false` la spegne |
 | `ppm` | `34` | Pixel per metro della foto |
 | `kiosk` | `true` | Schermo intero sul tablet |
 | `night_dim` | `true` | Di notte lo schermo si abbassa |
@@ -321,4 +337,4 @@ Idee, problemi o richieste: apri una [segnalazione](https://github.com/inusoa/is
 
 ---
 
-Distribuita con licenza [MIT](LICENSE).
+Distribuita con licenza [MIT](LICENSE). Include [three.js](https://threejs.org) (MIT) per la casa 3D automatica.
