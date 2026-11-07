@@ -5,7 +5,7 @@
  * (con copia di sicurezza della configurazione precedente e ripristino).
  */
 import { i18nAttach, i18nLang, i18nLoc } from './isola-i18n.js';
-const EDITOR_VERSION = '1.0.0-beta.5';
+const EDITOR_VERSION = '1.0.0-beta.6';
 const BACKUP_KEY = 'isola_live_backup';
 const DEF_RADIUS = 4.6;
 
@@ -110,6 +110,8 @@ const IC = {
   house: '<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/>',
   chev: '<path d="m9 6 6 6-6 6"/>',
   restore: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>',
+  dice: '<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.2" fill="currentColor"/><circle cx="15" cy="15" r="1.2" fill="currentColor"/><circle cx="15" cy="9" r="1.2" fill="currentColor"/><circle cx="9" cy="15" r="1.2" fill="currentColor"/>',
+  swap: '<path d="M7 4 3 8l4 4"/><path d="M3 8h14"/><path d="m17 20 4-4-4-4"/><path d="M21 16H7"/>',
 };
 const icon = (k, s = 18, w = 2) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${IC[k] || IC.pin}</svg>`;
 
@@ -252,7 +254,10 @@ class IsolaLiveEditor extends HTMLElement {
     this._img = c.image;
     this._ppm0 = c.ppm;
     this._items = this._collect(c);
-    this.st = { ppm: +c.ppm || 40, items: this._items };
+    // casa automatica (senza foto): rigenera e scambia stanze; le posizioni automatiche non si scrivono nella card
+    this._house = o.house || null;
+    if (this._house) this._markAuto(this._house.cfg);
+    this.st = { ppm: +c.ppm || 40, items: this._items, ...(this._house ? { house: clone(this._house.opts || {}) } : {}) };
     this._init = stable(this.st);
     this._undo = [];
     this.sel = -1; this.mode = 'list'; this.q = '';
@@ -332,6 +337,53 @@ class IsolaLiveEditor extends HTMLElement {
     const en = c.energy || {};
     if (en.pv_power || en.battery_soc || en.px) its.push({ k: 'energy', id: 'energy', entity: en.pv_power || en.battery_soc || '', name: 'Fotovoltaico e batteria', area: '', px: cp(en.px), house: cp(en.house_px) });
     return its;
+  }
+
+  // valori della casa automatica per ogni elemento (per riconoscere quelli spostati a mano)
+  _autoOf(it, cfg) {
+    const byId = (list) => (list || []).find(x => x.id === it.id || (x.entity && x.entity === it.entity));
+    if (it.k === 'light') { const l = byId(cfg.lights); return l ? { px: l.px, room: l.room } : null; }
+    if (it.k === 'vacuum' || it.k === 'mower') { const d = byId(cfg.devices); return d ? { px: d.px, area_px: d.area_px } : null; }
+    if (it.k === 'motion') { const p = (cfg.presence || {})[it.entity]; return p ? { px: p } : null; }
+    if (it.k === 'energy') return cfg.energy ? { px: cfg.energy.px, house: cfg.energy.house_px } : null;
+    const m = byId(cfg.sensors); return m ? { px: m.px } : null;
+  }
+  _markAuto(cfg) { for (const it of (this.st ? this.st.items : this._items)) { const a = this._autoOf(it, cfg || {}); it.a = a ? clone(a) : null; } }
+  // nuova disposizione: le posizioni tornano quelle automatiche
+  _useAuto(cfg) {
+    for (const it of this.items) {
+      const a = this._autoOf(it, cfg || {}); it.a = a ? clone(a) : null;
+      it.px = a && a.px ? [...a.px] : null;
+      if (it.k === 'light') it.room = a && a.room ? a.room.map(p => [...p]) : null;
+      if (it.k === 'vacuum' || it.k === 'mower') it.area_px = a && a.area_px ? a.area_px.map(r => [...r]) : [];
+      if (it.k === 'energy') it.house = a && a.house ? [...a.house] : null;
+    }
+    if (cfg && cfg.ppm) this.st.ppm = cfg.ppm;
+  }
+  _isAuto(it) {
+    if (!this._house || !it.a) return false;
+    const n = v => v ? JSON.stringify(v, (k, x) => typeof x === 'number' ? Math.round(x) : x) : '';
+    return n(it.px) === n(it.a.px) && (it.k !== 'light' || n(it.room) === n(it.a.room)) && (!(it.k === 'vacuum' || it.k === 'mower') || n(it.area_px) === n(it.a.area_px)) && (it.k !== 'energy' || n(it.house) === n(it.a.house));
+  }
+  async _regen(opts) {
+    if (!this._house || this._busyRegen) return;
+    this._busyRegen = true;
+    const v = this._dlg(`<h3>Ridisegno la casa…</h3><p>Pochi secondi: il modello 3D viene ricostruito con la nuova disposizione.</p>`);
+    try {
+      const r = await this._house.regen(opts);
+      this.snap();
+      this.st.house = clone(opts);
+      this._house.rooms = r.rooms; this._house.cfg = r.cfg;
+      this._useAuto(r.cfg);
+      this._imgEl.src = r.url;
+      this.toast(opts.swaps && opts.swaps.length ? 'Stanze scambiate' : 'Nuova disposizione');
+    } catch (e) { console.error('isola-live editor: casa', e); this.toast('Non riesco a ridisegnare la casa'); }
+    this._busyRegen = false; this._closeDlg(); this._swapA = null;
+    this.render(); this.draw();
+  }
+  _roomAt(p) {
+    const inside = (pt, poly) => { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, yi] = poly[i], [xj, yj] = poly[j]; if ((yi > pt[1]) !== (yj > pt[1]) && pt[0] < (xj - xi) * (pt[1] - yi) / (yj - yi) + xi) c = !c; } return c; };
+    return (this._house && this._house.rooms || []).find(r => inside(p, r.poly));
   }
 
   // ------------------------------------------------------------------ stato e annulla
@@ -471,6 +523,14 @@ class IsolaLiveEditor extends HTMLElement {
 
   _tap(p) {
     if (!this.inImg(p)) return;
+    if (this.mode === 'swap') {
+      const r = this._roomAt(p);
+      if (!r) { this.toast('Tocca una stanza'); return; }
+      if (!this._swapA) { this._swapA = r; this.render(); this.draw(); return; }
+      if (this._swapA.area_id === r.area_id) { this._swapA = null; this.render(); this.draw(); return; }
+      const h = clone(this.st.house || {}); h.swaps = [...(h.swaps || []), [this._swapA.area_id, r.area_id]];
+      this._regen(h); return;
+    }
     const it = this.it;
     if (this.mode === 'scale') {
       const d = this.draft && this.draft.t === 'scale' ? this.draft : (this.draft = { t: 'scale', pts: [] });
@@ -603,6 +663,13 @@ class IsolaLiveEditor extends HTMLElement {
         o.push(this._label([(a[0] + e[0]) / 2, (a[1] + e[1]) / 2], Math.round(dist(a, e)) + ' px', k));
       }
     }
+    // modo scambio: contorni e nomi delle stanze
+    if (this.mode === 'swap' && this._house) for (const r of this._house.rooms || []) {
+      const on = this._swapA && this._swapA.area_id === r.area_id, pts = r.poly.map(q => q.join(',')).join(' ');
+      o.push(`<polygon points="${pts}" fill="${on ? 'rgba(95,208,189,.28)' : 'rgba(255,255,255,.06)'}" stroke="${on ? '#5fd0bd' : 'rgba(255,255,255,.85)'}" stroke-width="${(on ? 3 : 1.6) * k}" stroke-dasharray="${on ? '' : 6 * k + ' ' + 5 * k}"/>`);
+      const cx = r.poly.reduce((s, q) => s + q[0], 0) / r.poly.length, cy = r.poly.reduce((s, q) => s + q[1], 0) / r.poly.length;
+      o.push(this._label([cx, cy], r.name, k));
+    }
     // pin
     const pinsFor = it => it.k === 'energy' ? [['px', it.px], ['house', it.house]] : [['px', it.px]];
     its.forEach((it, i) => {
@@ -630,6 +697,7 @@ class IsolaLiveEditor extends HTMLElement {
   }
   _tip() {
     const it = this.it;
+    if (this.mode === 'swap') return this._swapA ? 'Ora tocca la stanza con cui scambiarla' : 'Tocca la prima stanza da spostare';
     if (this.mode === 'scale') { const n = this.draft && this.draft.t === 'scale' ? this.draft.pts.length : 0; return n === 0 ? 'Tocca un’estremità di un muro di cui conosci la lunghezza' : n === 1 ? 'Ora tocca l’altra estremità' : ''; }
     if (!it) return '';
     if (this.mode === 'pos') return STEP.pos.hint(it);
@@ -643,17 +711,23 @@ class IsolaLiveEditor extends HTMLElement {
   render() {
     const it = this.it, its = this.items, tot = its.length, ok = its.filter(x => this.done(x)).length;
     const scaleOn = this.mode === 'scale';
-    const title = scaleOn ? 'Misura la scala' : it ? it.name : 'Posiziona gli elementi';
+    const swapOn = this.mode === 'swap';
+    const title = swapOn ? 'Scambia stanze' : scaleOn ? 'Misura la scala' : it ? it.name : 'Posiziona gli elementi';
     const sub = scaleOn ? `Ora: ${String(this.st.ppm).replace('.', ',')} pixel per metro` : it ? (this.mode === 'list' ? (this.done(it) ? 'Completo. Trascina il segnaposto per spostarlo.' : 'Scegli un passo qui a lato.') : (STEP[this.mode]?.hint(it) || '')) : 'Scegli un elemento e toccalo sulla foto. I segnaposto si trascinano.';
     this.$('.top').innerHTML = `
       <span class="mode"><i>${icon('pen', 14, 2.6)}</i><span>Posiziona</span></span>
       <div class="ttl"><b>${esc(title)}</b><small>${esc(sub)}</small></div>
       <button class="tb ic" data-a="undo" title="Annulla" ${this._undo.length ? '' : 'disabled'}>${icon('undo')}</button>
+      ${this._house ? `<button class="tb${this.mode === 'swap' ? ' on' : ''}" data-a="swap" title="Scambia stanze">${icon('swap')}<span class="lb">Scambia</span></button><button class="tb" data-a="regen" title="Rigenera la casa">${icon('dice')}<span class="lb">Rigenera</span></button>` : ''}
       <button class="tb${scaleOn ? ' on' : ''}" data-a="scale" title="Misura la scala">${icon('ruler')}<span class="lb">Scala</span></button>
       <button class="tb pri" data-a="save">${icon('check')}<span class="lb">Salva</span></button>
       <button class="tb ic" data-a="close" title="Chiudi">${icon('close')}</button>`;
     let b = '';
-    if (it && !scaleOn) {
+    if (swapOn) {
+      b += `<div class="ph"><h3>Scambia stanze</h3><small>Tocca due stanze sulla foto: si scambiano di posto e la casa si ridisegna. Le luci e i sensori le seguono.</small></div>
+        <div class="opt">${(this.st.house && this.st.house.swaps && this.st.house.swaps.length) ? `<button class="ob" data-a="swap-reset">${icon('restore')}Annulla tutti gli scambi</button>` : ''}<button class="ob" data-a="regen">${icon('dice')}Prova un'altra disposizione</button></div>
+        <div class="sp"></div><div class="pf"><button class="btn pri" data-a="swap">Fatto</button></div>`;
+    } else if (it && !scaleOn) {
       const steps = KIND[it.k].steps, cur = this.mode;
       b += `<button class="back" data-a="list">${icon('chev', 14, 2.4)}Tutti gli elementi</button>
         <div class="card"><span class="ic" style="color:${KIND[it.k].color}">${icon(it.k, 20)}</span><div style="min-width:0"><h4>${esc(it.name)}</h4><p>${esc(it.entity)}${it.area ? ' · ' + esc(it.area) : ''}</p></div></div>
@@ -723,6 +797,9 @@ class IsolaLiveEditor extends HTMLElement {
     const it = this.it;
     switch (a) {
       case 'sel': this._select(+b.dataset.i); break;
+      case 'swap': this.mode = this.mode === 'swap' ? 'list' : 'swap'; this.sel = -1; this.draft = null; this._swapA = null; break;
+      case 'regen': this._regen({ seed: (Math.random() * 4294967295) >>> 0, swaps: [] }); return;
+      case 'swap-reset': this._regen({ ...(this.st.house || {}), swaps: [] }); return;
       case 'list': this.sel = -1; this.mode = 'list'; this.draft = null; break;
       case 'step': this.mode = b.dataset.s; this.draft = null; if (this.mode === 'room' && it.room) this.draft = { t: 'poly', pts: it.room.map(p => [p[0], p[1]]) }; break;
       case 'next':
@@ -741,7 +818,8 @@ class IsolaLiveEditor extends HTMLElement {
       case 'zone-del': this.snap(); it.area_px = []; break;
       case 'undo': {
         const s = this._undo.pop(); if (!s) return;
-        const keepSel = this.sel; this.st = JSON.parse(s); this.sel = keepSel < this.items.length ? keepSel : -1; this.draft = null;
+        const keepSel = this.sel, hb = JSON.stringify(this.st.house || null); this.st = JSON.parse(s); this.sel = keepSel < this.items.length ? keepSel : -1; this.draft = null;
+        if (this._house && JSON.stringify(this.st.house || null) !== hb) this._house.regen(this.st.house || {}).then(r => { this._house.rooms = r.rooms; this._house.cfg = r.cfg; this._imgEl.src = r.url; }).catch(() => {});
         if (this.mode !== 'list' && this.mode !== 'scale' && this.it) { const st = KIND[this.it.k].steps.find(x => !this.stepDone(this.it, x)); this.mode = st || 'list'; }
         this.toast('Annullato'); break;
       }
@@ -783,7 +861,8 @@ class IsolaLiveEditor extends HTMLElement {
   // applica le posizioni a una configurazione utente (solo le chiavi del configuratore; il resto non si tocca)
   apply(user) {
     const out = clone(user || {}) || {};
-    const its = this.items;
+    // con la casa automatica, gli elementi rimasti dove li ha messi la casa non si scrivono: seguono la casa
+    const its = this.items.map(it => this._isAuto(it) ? { ...it, px: null, room: null, area_px: [], house: null } : it);
     const isBare = (e, keys) => Object.keys(e).every(k => keys.includes(k));
     const upsert = (list, it, fill, clear, bare) => {
       const L = Array.isArray(list) ? list : [];
@@ -835,7 +914,8 @@ class IsolaLiveEditor extends HTMLElement {
       if (Object.keys(E).length) out.energy = E; else delete out.energy;
     }
     // scala
-    if (this.st.ppm && (this._ppm0 !== undefined || Math.abs(this.st.ppm - 40) > 0.01)) out.ppm = this.st.ppm;
+    if (this._house) { const h = this.st.house || {}; if (h.seed !== undefined || (h.swaps && h.swaps.length)) out.house = { ...(out.house || {}), ...h }; const ap = this._house.cfg && this._house.cfg.ppm; if (ap && Math.abs(this.st.ppm - ap) > 0.05) out.ppm = this.st.ppm; else delete out.ppm; }
+    else if (this.st.ppm && (this._ppm0 !== undefined || Math.abs(this.st.ppm - 40) > 0.01)) out.ppm = this.st.ppm;
     return out;
   }
   // configurazione della card come va scritta nella dashboard

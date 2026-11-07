@@ -204,7 +204,14 @@ const D = {
   'Salvataggio non riuscito:': 'Saving failed:', 'Home Assistant non raggiungibile': 'Home Assistant unreachable', 'Configuratore non trovato (isola-live-editor.js)': 'Configurator not found (isola-live-editor.js)',
   'Foto della casa non trovata:': 'Home photo not found:', 'luci (': 'lights (', 'con stanza)': 'with room)', 'sensori e movimento': 'sensors and motion', 'robot': 'robots',
   'Luci giardino al tramonto': 'Garden lights at sunset',
-  'Casa usa': 'House uses', 'Fuori': 'Away',
+  'Casa usa': 'House uses', 'Disegno la casa 3D dalle tue stanze…': 'Drawing your 3D home from your rooms…',
+  'Non riesco a disegnare la casa 3D su questo dispositivo: aggiungi la foto della casa (': 'I can’t draw the 3D home on this device: add a photo of your home (', ') nella configurazione della card': ') to the card configuration',
+  'Scambia stanze': 'Swap rooms', 'Scambia': 'Swap', 'Rigenera la casa': 'Regenerate the home', 'Rigenera': 'Regenerate', 'Ridisegno la casa…': 'Redrawing the home…',
+  'Pochi secondi: il modello 3D viene ricostruito con la nuova disposizione.': 'A few seconds: the 3D model is being rebuilt with the new layout.',
+  'Stanze scambiate': 'Rooms swapped', 'Nuova disposizione': 'New layout', 'Non riesco a ridisegnare la casa': 'I can’t redraw the home', 'Tocca una stanza': 'Tap a room',
+  'Ora tocca la stanza con cui scambiarla': 'Now tap the room to swap it with', 'Tocca la prima stanza da spostare': 'Tap the first room to move',
+  'Tocca due stanze sulla foto: si scambiano di posto e la casa si ridisegna. Le luci e i sensori le seguono.': 'Tap two rooms on the photo: they swap places and the home is redrawn. Lights and sensors follow them.',
+  'Annulla tutti gli scambi': 'Undo all swaps', 'Prova un\'altra disposizione': 'Try another layout', 'Fuori': 'Away',
   'aperta': 'open', 'aperto': 'open', 'aperte': 'open', 'chiusa': 'closed', 'chiuso': 'closed', 'accesa': 'on', 'acceso': 'on', 'spenta': 'off', 'spento': 'off',
 };
 // frasi con numeri o nomi in mezzo
