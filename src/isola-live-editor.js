@@ -5,7 +5,7 @@
  * (con copia di sicurezza della configurazione precedente e ripristino).
  */
 import { i18nAttach, i18nLang, i18nLoc } from './isola-i18n.js';
-const EDITOR_VERSION = '1.0.0-beta.6';
+const EDITOR_VERSION = '1.0.0-beta.8';
 const BACKUP_KEY = 'isola_live_backup';
 const DEF_RADIUS = 4.6;
 

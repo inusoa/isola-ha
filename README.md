@@ -9,7 +9,7 @@ L'interfaccia di casa che si configura da sola: elegante sul telefono, viva sul 
 <a href="https://github.com/inusoa/isola-ha/releases/latest"><img alt="Versione" src="https://img.shields.io/github/v/release/inusoa/isola-ha?include_prereleases&style=flat-square&color=5fd0bd&label=versione"></a>
 <a href="https://github.com/inusoa/isola-ha/releases"><img alt="Download" src="https://img.shields.io/github/downloads/inusoa/isola-ha/total?style=flat-square&color=f5b544&label=download"></a>
 <a href="https://github.com/inusoa/isola-ha/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/inusoa/isola-ha?style=flat-square&color=f3efe7&label=stelle"></a>
-<a href="https://hacs.xyz"><img alt="HACS" src="https://img.shields.io/badge/HACS-repository%20personalizzato-41BDF5?style=flat-square"></a>
+<a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=inusoa&repository=isola-ha&category=plugin"><img alt="Marketplace e HACS" src="https://img.shields.io/badge/Marketplace%20%C2%B7%20HACS-installa-41BDF5?style=flat-square"></a>
 <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/licenza-MIT-8bc34a?style=flat-square"></a>
 </p>
 
@@ -48,6 +48,10 @@ Da Isola si apre Isola Live con un tocco: la stessa casa, su qualsiasi schermo.
 - **Robot ed elettrodomestici:** aspirapolvere, tagliaerba e lavatrice compaiono quando lavorano, con avanzamento e comandi.
 - **Isola Live:** luci realistiche per stanza, ciclo giorno/notte dal sole vero, robot in movimento, presenze, fotovoltaico, modalità quadro notturna, schermo intero per tablet.
 - **Configuratore visivo:** luci, stanze, robot e sensori si mettono sulla foto con un dito e si salvano nella dashboard, senza scrivere YAML.
+- **Luci a colori:** sotto la luminosità, il cursore del colore e quello del bianco (caldo → freddo) quando la lampadina li supporta.
+- **Campanello:** quando suonano, Isola Live apre la telecamera dal vivo con **Parla** (l'audio a due vie della finestra della telecamera) e **Chiudi**.
+- **Energia senza configurare:** se hai indicato i sensori di potenza nel cruscotto Energia di Home Assistant, Isola usa quelli.
+- **Pronta in un tocco:** la dashboard **Isola** compare tra quelle da creare, Isola Live tra le sezioni della community, e le card hanno l'editor visivo.
 
 > **Versione beta.** Funziona con i dati di qualsiasi casa, ma è giovane: se qualcosa non viene trovato o non si vede bene, apri una segnalazione (Issue) con uno screenshot.
 
@@ -57,38 +61,57 @@ Da Isola si apre Isola Live con un tocco: la stessa casa, su qualsiasi schermo.
 
 - Home Assistant **2024 o più recente** (consigliata l'ultima versione).
 - Le stanze di casa create come **Aree** (Impostazioni › Aree, etichette e zone) e i dispositivi assegnati alle aree: è da qui che Isola capisce cosa sta dove.
-- Per installare con HACS: [HACS](https://hacs.xyz) già installato.
+- Per installare: il **Marketplace** di Home Assistant (2026.11 o più recente) oppure [HACS](https://hacs.xyz) sulle versioni precedenti.
 - Per Isola Live: niente, la casa 3D si disegna da sola dalle aree. Per un risultato fotografico, una **foto o un render della casa vista dall'alto** (JPG o PNG, orizzontale; va benissimo un render di Planner 5D, Sweet Home 3D o un'immagine generata).
 
 ---
 
 ## Installazione passo passo
 
-### Passo 1 · Installa Isola con HACS (consigliato)
+### Passo 1 · Installa Isola
 
-1. In Home Assistant apri **HACS** dalla barra laterale.
-2. In alto a destra tocca il menu **⋮** › **Repository personalizzati** (*Custom repositories*).
-3. Nel campo **Repository** incolla:
+**Il modo più veloce:** apri questa pagina dal computer o dal telefono su cui usi Home Assistant e tocca il pulsante.
+
+[![Apri Isola in Home Assistant](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=inusoa&repository=isola-ha&category=plugin)
+
+Si apre Home Assistant sulla scheda di Isola: tocca **Scarica** (*Download*), conferma e **ricarica** la pagina. Se usi l'app sul telefono: Impostazioni › App complementare › Risoluzione dei problemi › **Ripristina la cache del frontend**.
+
+<details open>
+<summary><b>Home Assistant 2026.11 o più recente: dal Marketplace</b></summary>
+
+Dalla 2026.11 le card della community si installano dal **Marketplace** di Home Assistant (ha preso il posto di HACS).
+
+1. Apri **Impostazioni › Marketplace**.
+2. Isola è in attesa di entrare nel catalogo: nel frattempo usa **Aggiungi da link** (nel menu **⋮** in alto a destra) e incolla:
    ```
    https://github.com/inusoa/isola-ha
    ```
-4. Come **Tipo** (*Type*) scegli **Dashboard** e tocca **Aggiungi**. Chiudi la finestra.
-5. Nella ricerca di HACS scrivi **Isola**, apri il risultato e tocca **Scarica** (*Download*) in basso a destra, poi conferma.
-6. Quando HACS lo chiede, **ricarica** la pagina. Se usi l'app sul telefono: Impostazioni › App complementare › Risoluzione dei problemi › **Ripristina la cache del frontend**.
-
-HACS aggiunge da solo la risorsa `/hacsfiles/isola-ha/isola-ha.js`, che carica sia Isola sia Isola Live.
+   Come tipo scegli **Dashboard**.
+3. Apri **Isola**, tocca **Scarica** e ricarica la pagina.
+</details>
 
 <details>
-<summary><b>In alternativa: installazione a mano (senza HACS)</b></summary>
+<summary><b>Home Assistant più vecchio: con HACS</b></summary>
 
-1. Apri l'[ultima release](https://github.com/inusoa/isola-ha/releases/latest) e, in fondo, sotto **Assets**, scarica **tutti** i file `.js` (`isola-ha.js`, `isola-mobile.js`, `isola-live.js`, `isola-live-render.js`, `isola-live-editor.js`, `isola-i18n.js`, `isola-house.js`, `three.module.min.js`).
+1. In Home Assistant apri **HACS** dalla barra laterale.
+2. In alto a destra tocca il menu **⋮** › **Repository personalizzati** (*Custom repositories*).
+3. Nel campo **Repository** incolla `https://github.com/inusoa/isola-ha`, come **Tipo** scegli **Dashboard** e tocca **Aggiungi**.
+4. Cerca **Isola**, aprila e tocca **Scarica** (*Download*), poi conferma e ricarica la pagina.
+</details>
+
+In tutti e due i casi la risorsa `/hacsfiles/isola-ha/isola-ha.js` si aggiunge da sola e carica sia Isola sia Isola Live.
+
+<details>
+<summary><b>In alternativa: installazione a mano</b></summary>
+
+1. Apri l'[ultima release](https://github.com/inusoa/isola-ha/releases/latest) e, in fondo, sotto **Assets**, scarica **`isola-ha.js`** e **`three.module.min.js`** (dalla 1.0.0-beta.8 Isola è un file solo; three.js serve alla casa 3D e, se manca, arriva da internet).
 2. Copiali in `/config/www/isola-ha/` di Home Assistant, per esempio con l'add-on **File editor**, **Studio Code Server** o **Samba**.
    Se la cartella `www` non esisteva, **riavvia Home Assistant** una volta.
 3. Attiva la **Modalità avanzata**: tocca il tuo nome in basso a sinistra (Profilo) e accendi *Modalità avanzata*.
 4. Vai in **Impostazioni › Dashboard**, menu **⋮** in alto a destra › **Risorse** › **Aggiungi risorsa**:
    - URL: `/local/isola-ha/isola-ha.js?v=1`
    - Tipo: **Modulo JavaScript**
-5. Ricarica la pagina (sul telefono: ripristina la cache del frontend come al passo 6 sopra).
+5. Ricarica la pagina (sul telefono: ripristina la cache del frontend).
 
 Quando aggiorni i file a mano, cambia `?v=1` in `?v=2`, `?v=3`… così i browser scaricano la versione nuova.
 </details>
@@ -99,6 +122,10 @@ Impostazioni › Dashboard › **⋮** › **Risorse**: deve esserci una riga co
 Se apri gli strumenti per sviluppatori del browser (console), vedi le scritte **ISOLA** e **ISOLA LIVE** con il numero di versione.
 
 ### Passo 3 · Crea la dashboard Isola per il telefono
+
+**Il modo più veloce (Home Assistant 2026.5 o più recente):** **Impostazioni › Dashboard › + Aggiungi dashboard** e scegli **Isola** nell'elenco. Si crea una dashboard con due viste già pronte, **Isola** per il telefono e **Isola Live** per il tablet. Per cambiarla poi, prendine il controllo dalla matita.
+
+**Oppure, a mano:**
 
 1. **Impostazioni › Dashboard › + Aggiungi dashboard › Nuova dashboard da zero**.
 2. Nome: **Isola**, icona a piacere (per esempio `mdi:island`), lascia attivo *Mostra nella barra laterale*. Tocca **Crea**.
@@ -175,6 +202,8 @@ Prova: [demo senza foto](https://inusoa.github.io/isola-ha/demo/demo-auto.html?l
    ```
 3. Salva. Vedrai la casa con la barra in basso che contiene già luci, robot e persone trovate da sole.
 
+**In una dashboard a sezioni (Home Assistant 2026.11):** in modifica tocca **+ Aggiungi sezione** e scegli **Isola Live** tra le *sezioni della community*: occupa tutta la larghezza. Puoi anche aggiungere la card dal selettore delle card: foto, titolo, lingua, schermo intero e casa 3D si impostano dall'editor visivo, senza YAML.
+
 ### Passo 5b · Metti le cose al loro posto: il configuratore 📐
 
 Non serve scrivere coordinate. Se sei **amministratore** di Home Assistant, nella barra in alto di Isola Live trovi il pulsante **📐 Posiziona**.
@@ -239,7 +268,7 @@ Ogni elemento si posiziona con `px: [x, y]` (pixel della foto). Le luci e i robo
 
 ### Passo 7 · Aggiornamenti
 
-Con HACS: quando esce una nuova versione compare in **Impostazioni › Aggiornamenti**. Installala e ricarica la pagina (sul telefono: ripristina la cache del frontend).
+Con il Marketplace o con HACS: quando esce una nuova versione compare in **Impostazioni › Aggiornamenti**. Installala e ricarica la pagina (sul telefono: ripristina la cache del frontend).
 
 ---
 
@@ -255,7 +284,7 @@ Tutto quello che scrivi nella card ha la precedenza su ciò che Isola trova da s
 | `room_crops` | `{ Soggiorno: [510,120,900,510] }` | Pezzo di foto per ogni stanza |
 | `weather` | `weather.casa` | Meteo (se ne hai più di uno) |
 | `alarm` | `alarm_control_panel.casa` | Allarme |
-| `pv_power` / `pv_today` | `sensor.inverter_potenza` | Fotovoltaico: potenza attuale e produzione di oggi |
+| `pv_power` / `pv_today` | `sensor.inverter_potenza` | Fotovoltaico: potenza attuale e produzione di oggi (se non lo scrivi, vale il sensore di potenza del cruscotto Energia) |
 | `battery_soc` / `battery_power` | `sensor.batteria_livello` | Batteria di casa: livello (%) e potenza |
 | `battery_invert` | `true` | Se la tua batteria segna la carica come negativa |
 | `scenes` | vedi sotto | Pulsanti scena (Esco, Notte, …) |
@@ -291,6 +320,7 @@ Isola riconosce da sola gli script che si chiamano come *esco*, *notte/buonanott
 | `energy` | `{ px, house_px }` | Riquadro fotovoltaico e batteria |
 | `presence` | `{ binary_sensor.x: [x, y] }` | Dove compaiono le persone in base al movimento |
 | `title` | `Casa Rossi` | Titolo in alto a sinistra |
+| `doorbell` | `event.campanello` oppure `{ entity: binary_sensor.ding, camera: camera.ingresso }` | Campanello e telecamera da aprire quando suonano (di solito li trova da solo). `doorbell: false` lo spegne |
 | `language` | `auto` / `it` / `en` | Lingua dell'interfaccia e del configuratore |
 
 ---

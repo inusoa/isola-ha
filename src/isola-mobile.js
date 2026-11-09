@@ -1,10 +1,11 @@
-import { i18nAttach, i18nLang, i18nLoc } from './isola-i18n.js';
+import { i18nAttach, i18nLang, i18nLoc, entName, energyRates } from './isola-i18n.js';
+import './isola-ui.js';
 /* Isola – l'interfaccia di casa per smartphone (Home Assistant)
  * Isola       = smartphone (questa card: type: custom:isola-mobile)
  * Isola Live  = tablet a parete o hub fisso (type: custom:isola-live)
  * Si configura da sola dalle aree e dai dispositivi di Home Assistant; ogni voce si può cambiare nel YAML della card.
  */
-const VERSION = '1.0.0-beta.6';
+const VERSION = '1.0.0-beta.8';
 let IMG_W = 1364, IMG_H = 768;
 // ritagli delle stanze sulla foto della casa: room_crops: { Soggiorno: [x0, y0, x1, y1] } (pixel della foto)
 const applyCrops = c => { const K = c.room_crops || {}; (c.rooms || []).forEach(r => { if (K[r.name]) r.crop = K[r.name]; }); return c; };
@@ -47,7 +48,7 @@ const DEFAULTS = {
 function autoConfig(h) {
   const S = h.states || {}, ids = Object.keys(S), E = h.entities || {}, D = h.devices || {}, A = h.areas || {};
   const dom = id => id.split('.')[0], obj = id => id.split('.')[1];
-  const name = id => (S[id]?.attributes?.friendly_name) || obj(id).replace(/_/g, ' ');
+  const name = id => entName(h, id);
   const dc = id => S[id]?.attributes?.device_class || '';
   const visible = id => { const e = E[id]; return !e || (!e.hidden && !e.entity_category); };
   const areaOf = id => { const e = E[id]; if (!e) return null; return e.area_id || (e.device_id && D[e.device_id] ? D[e.device_id].area_id : null) || null; };
@@ -66,6 +67,9 @@ function autoConfig(h) {
   const bS = ids.find(id => new RegExp(BAT + '(soc|state_of_(charge|capacity)|livello|level|charge)$').test(id) && S[id].attributes?.unit_of_measurement === '%');
   const bP = ids.find(id => new RegExp(BAT + '(power|potenza|charge_discharge_power)$').test(id) && dc(id) === 'power');
   if (bS) cfg.battery_soc = bS; if (bP) cfg.battery_power = bP;
+  const ER = energyRates(h) || {};
+  if (ER.pv && S[ER.pv]) cfg.pv_power = ER.pv;
+  if (ER.bat && S[ER.bat]) { cfg.battery_power = ER.bat; cfg.battery_invert = true; }   // nel cruscotto Energia la batteria è positiva quando si scarica
   // persone (con la batteria del telefono, se c'è l'app)
   cfg.people = ids.filter(id => dom(id) === 'person').map(id => {
     const p = { entity: id, name: name(id) };
@@ -513,6 +517,8 @@ button.arow{cursor:pointer}
 .noimg small{font-size:13px}
 .bri{-webkit-appearance:none;appearance:none;margin:0 14px 14px;height:28px;border-radius:14px;background:rgba(42,29,5,.18);outline:none}
 .bri::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:14px;background:#2A1D05;border:3px solid var(--sun)}
+.bri.hue{background:linear-gradient(90deg,#ff3b30,#ffcc00,#34c759,#00c7be,#007aff,#af52de,#ff2d55,#ff3b30)}
+.bri.ct{background:linear-gradient(90deg,#ffb347,#fff3e0 55%,#cfe6ff)}
 .bri::-moz-range-thumb{width:24px;height:24px;border-radius:12px;background:#2A1D05;border:3px solid var(--sun)}
 .arow .val{font-size:14px;font-weight:700;color:var(--tx)}
 .arow.card2{background:var(--surf);border-radius:22px;padding:12px 16px;border:0}
@@ -561,6 +567,7 @@ button.crow{cursor:pointer}
 // ------------------------------------------------------------------ la card
 class IsolaCard extends HTMLElement {
   static getStubConfig() { return {}; }
+  static getConfigElement() { return document.createElement('isola-mobile-card-editor'); }
   getCardSize() { return 12; }
   setConfig(config) {
     this._user = config || {}; this._autoKey = null;
@@ -573,7 +580,7 @@ class IsolaCard extends HTMLElement {
     i18nLang(h, this._user && this._user.language);
     // configurazione automatica (si rifà se cambiano aree o entità)
     if (this._user && this._user.auto !== false) {
-      const key = Object.keys(h.states || {}).length + '|' + Object.keys(h.areas || {}).length;
+      const key = Object.keys(h.states || {}).length + '|' + Object.keys(h.areas || {}).length + '|' + (energyRates(h, () => { this._autoKey = null; if (this._hass) this.hass = this._hass; }) ? 'e' : '');
       if (key !== this._autoKey) {
         this._autoKey = key;
         try { this._config = applyCrops(deepMerge(deepMerge(DEFAULTS, autoConfig(h)), this._user)); this._cache = {}; if (this._root) this._build(); }
@@ -720,11 +727,12 @@ class IsolaCard extends HTMLElement {
     this._app.addEventListener('change', e => this._change(e));
     // luminosità: mentre trascini il cursore la pagina non si ridisegna e la percentuale si aggiorna dal vivo
     this._app.addEventListener('input', e => {
-      const t = e.target; if (!t || !t.dataset || !t.dataset.bri) return;
+      const t = e.target; if (!t || !t.dataset || !(t.dataset.bri || t.dataset.hue || t.dataset.ct)) return;
       this._briDrag = t;
+      if (!t.dataset.bri) return;
       const sm = t.closest('.lt')?.querySelector('small'); if (sm) sm.textContent = 'Accesa · ' + t.value + '%';
     });
-    const briEnd = e => { const t = e.target; if (t && t.dataset && t.dataset.bri && this._briDrag === t) setTimeout(() => { if (this._briDrag === t && !this._briWant) { this._briDrag = null; this._schedule(true); } }, 1500); };
+    const briEnd = e => { const t = e.target; if (t && t.dataset && (t.dataset.bri || t.dataset.hue || t.dataset.ct) && this._briDrag === t) setTimeout(() => { if (this._briDrag === t && !this._briWant) { this._briDrag = null; this._schedule(true); } }, 1500); };
     this._app.addEventListener('pointerup', briEnd); this._app.addEventListener('touchend', briEnd);
     const chartPtr = e => {
       const el = e.target && e.target.closest ? e.target.closest('[data-chart]') : null; if (!el) return;
@@ -969,7 +977,7 @@ class IsolaCard extends HTMLElement {
     const since = new Date(s.last_changed);
     if (!home && !isNaN(since)) where += sameDay(since, now) ? ' · ' + hhmm(since) : '';
     const pic = s.attributes.entity_picture;
-    const name = p.name || s.attributes.friendly_name || '';
+    const name = p.name || entName(this._hass, p.entity) || '';
     const steps = this._num(p.steps), heart = this._num(p.heart), bat = this._num(p.battery);
     const bs = String(this._st(p.battery_state)?.state || '').toLowerCase();
     const chg = /charg|in carica/.test(bs) && !/not|non/.test(bs);
@@ -1796,7 +1804,7 @@ class IsolaCard extends HTMLElement {
     if (L.length || AU.length) H.push(`<section class="rsec"><span class="lab">Luci</span>${L.length ? '<div class="grid2">' : '<div style="display:none">'}${L.map(x => {
       const s = this._st(x.entity), o = s && s.state === 'on', dim = s && x.type === 'light' && (s.attributes.supported_color_modes || []).some(m => m !== 'onoff');
       const bri = o && s.attributes.brightness !== undefined ? Math.round(s.attributes.brightness / 2.55) : null;
-      return `<div class="lt${o ? ' on' : ''}"><button class="ltb" data-act="toggle" data-id="${esc(x.entity)}" aria-pressed="${o}">${svg(x.outdoor ? 'lamp' : 'bulb', 24, 1.9)}<span><b>${esc(x.name)}</b><small>${!s ? 'non trovata' : o ? 'Accesa' + (bri !== null ? ' · ' + bri + '%' : '') : 'Spenta'}</small></span></button>${dim && o ? `<input class="bri" type="range" min="1" max="100" value="${bri || 100}" data-bri="${esc(x.entity)}" aria-label="Luminosità ${esc(x.name)}">` : ''}</div>`; }).join('')}</div>
+      return `<div class="lt${o ? ' on' : ''}"><button class="ltb" data-act="toggle" data-id="${esc(x.entity)}" aria-pressed="${o}">${svg(x.outdoor ? 'lamp' : 'bulb', 24, 1.9)}<span><b>${esc(x.name)}</b><small>${!s ? 'non trovata' : o ? 'Accesa' + (bri !== null ? ' · ' + bri + '%' : '') : 'Spenta'}</small></span></button>${dim && o ? `<input class="bri" type="range" min="1" max="100" value="${bri || 100}" data-bri="${esc(x.entity)}" aria-label="Luminosità ${esc(x.name)}">` : ''}${o && s ? this._colorCtl(s, x) : ''}</div>`; }).join('')}</div>
       ${(r.items || []).filter(x => x.type === 'auto').map(x => `<div class="arow"><span class="grow"><b>${esc(x.name)}</b><small>${esc(x.note || '')}</small></span><span class="chip">${dark ? 'Accesa · auto' : 'Spenta · auto'}</span></div>`).join('')}</section>`);
     // dispositivi della stanza
     if (mine.length) H.push(`<section class="rsec"><span class="lab">Dispositivi</span>${mine.map(x => this._devRoomHtml(x, r)).join('')}</section>`);
@@ -1869,7 +1877,7 @@ class IsolaCard extends HTMLElement {
 
   // ================================================================ PAGINE COMPLETE (fase 4): dispositivi, clima, consumi, sistema
   _fname(id, strip) {
-    const s = this._st(id); let n = (s && s.attributes.friendly_name) || id.split('.')[1].replace(/_/g, ' ');
+    const s = this._st(id); let n = entName(this._hass, id);
     if (strip) n = n.replace(new RegExp('^\\s*' + strip.replace(/[_\s]+/g, '[_\\s]+') + '[\\s_:-]*', 'i'), '');
     n = n.trim(); const k = n.toLowerCase();
     if (NAME_IT[k]) return NAME_IT[k];
@@ -2390,9 +2398,30 @@ class IsolaCard extends HTMLElement {
       clearTimeout(this._briT); this._briT = setTimeout(() => this._briDone(), 4000);
       return;
     }
+    if (t.dataset.hue || t.dataset.ct) {
+      const id = t.dataset.hue || t.dataset.ct, v = Math.round(+t.value), st = this._st(id);
+      const d = t.dataset.hue ? { hs_color: [v, (st && st.attributes.hs_color && st.attributes.hs_color[1] > 20) ? st.attributes.hs_color[1] : 100] } : { color_temp_kelvin: v };
+      this._hass.callService('light', 'turn_on', { entity_id: id, ...d })
+        .then(() => this._toast(t.dataset.hue ? 'Colore cambiato' : 'Bianco ' + (v < 3300 ? 'caldo' : v > 5000 ? 'freddo' : 'neutro'))).catch(er => this._toast('La luce non risponde', true, er));
+      clearTimeout(this._briT); this._briT = setTimeout(() => this._briDone(), 1500);
+      return;
+    }
     if (!t.dataset.num) return;
     const v = parseFloat(String(t.value).replace(',', '.')); if (isNaN(v)) return;
     this._hass.callService('input_number', 'set_value', { entity_id: t.dataset.num, value: v }).then(() => this._toast('Salvato')).catch(er => this._toast('Valore non valido', true, er));
+  }
+  _colorCtl(s, x) {
+    const a = s.attributes, m = a.supported_color_modes || [];
+    let h = '';
+    if (m.some(v => /^(hs|xy|rgb|rgbw|rgbww)$/.test(v))) {
+      const hv = a.hs_color ? Math.round(a.hs_color[0]) : 35;
+      h += `<input class="bri hue" type="range" min="0" max="359" value="${hv}" data-hue="${esc(x.entity)}" aria-label="Colore ${esc(x.name)}">`;
+    }
+    if (m.includes('color_temp')) {
+      const lo = a.min_color_temp_kelvin || 2000, hi = a.max_color_temp_kelvin || 6500, kv = a.color_temp_kelvin || Math.round((lo + hi) / 2);
+      h += `<input class="bri ct" type="range" min="${lo}" max="${hi}" step="50" value="${kv}" data-ct="${esc(x.entity)}" aria-label="Bianco ${esc(x.name)}">`;
+    }
+    return h;
   }
   _briDone() { clearTimeout(this._briT); this._briWant = null; this._briDrag = null; this._cache = {}; this._schedule(true); }
   _goPage(p) {
@@ -2462,5 +2491,5 @@ class IsolaCard extends HTMLElement {
 
 if (!customElements.get('isola-mobile')) customElements.define('isola-mobile', IsolaCard);
 window.customCards = window.customCards || [];
-if (!window.customCards.find(x => x.type === 'isola-mobile')) window.customCards.push({ type: 'isola-mobile', name: 'Isola', description: 'L\u2019interfaccia di casa per smartphone (Isola Live è per tablet e hub fissi)', preview: false });
+if (!window.customCards.find(x => x.type === 'isola-mobile')) window.customCards.push({ type: 'isola-mobile', name: 'Isola', description: 'L\u2019interfaccia di casa per smartphone (Isola Live è per tablet e hub fissi)', preview: false, documentationURL: 'https://github.com/inusoa/isola-ha' });
 console.info(`%c ISOLA %c ${VERSION} `, 'background:#F5B544;color:#2A1D05;font-weight:700', 'background:#161C21;color:#F3EFE7');

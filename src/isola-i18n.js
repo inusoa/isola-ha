@@ -212,6 +212,9 @@ const D = {
   'Ora tocca la stanza con cui scambiarla': 'Now tap the room to swap it with', 'Tocca la prima stanza da spostare': 'Tap the first room to move',
   'Tocca due stanze sulla foto: si scambiano di posto e la casa si ridisegna. Le luci e i sensori le seguono.': 'Tap two rooms on the photo: they swap places and the home is redrawn. Lights and sensors follow them.',
   'Annulla tutti gli scambi': 'Undo all swaps', 'Prova un\'altra disposizione': 'Try another layout', 'Fuori': 'Away',
+  // ---------------------------------------------------------------- beta.7: colori delle luci, campanello, editor visivo
+  'Colore cambiato': 'Colour changed', 'Bianco caldo': 'Warm white', 'Bianco freddo': 'Cool white', 'Bianco neutro': 'Neutral white', 'Colore': 'Colour', 'Bianco': 'White',
+  'Suonano alla porta': 'Someone’s at the door', 'Parla': 'Talk', 'Campanello': 'Doorbell', 'Nessuna telecamera collegata al campanello': 'No camera linked to the doorbell',
   'aperta': 'open', 'aperto': 'open', 'aperte': 'open', 'chiusa': 'closed', 'chiuso': 'closed', 'accesa': 'on', 'acceso': 'on', 'spenta': 'off', 'spento': 'off',
 };
 // frasi con numeri o nomi in mezzo
@@ -282,4 +285,32 @@ export function i18nAttach(root) {
   });
   mo.observe(root, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ATTR });
   if (LANG !== 'it') tr(root);
+}
+
+// ------------------------------------------------------------------ nomi delle entità (Home Assistant 2026: nome del dispositivo + nome dell'entità)
+// friendly_name finché c'è; altrimenti il nome composto dal registro, come fa Home Assistant
+export function entName(h, id) {
+  const st = h && h.states && h.states[id], a = (st && st.attributes) || {};
+  if (a.friendly_name) return a.friendly_name;
+  const e = h && h.entities && h.entities[id], d = e && e.device_id && h.devices ? h.devices[e.device_id] : null;
+  const dn = d ? (d.name_by_user || d.name) : '', en = e ? e.name : '';
+  if (dn && en) return en.toLowerCase().startsWith(dn.toLowerCase()) ? en : dn + ' ' + en;
+  return en || dn || String(id).split('.').pop().replace(/_/g, ' ');
+}
+
+// ------------------------------------------------------------------ energia: i sensori di potenza scelti nel cruscotto Energia
+// (Home Assistant 2025.12+ permette di indicare la potenza di fotovoltaico, batteria e rete). Letto una volta sola.
+let _eR = null, _eP = null; const _eW = new Set();
+const _rate = s => s.stat_rate || (s.power_config && s.power_config.stat_rate) || (Array.isArray(s.power) && s.power[0] && s.power[0].stat_rate) || '';
+export function energyRates(h, done) {
+  if (_eR) return _eR;
+  if (done) _eW.add(done);
+  if (!_eP && h && typeof h.callWS === 'function') {
+    _eP = h.callWS({ type: 'energy/get_prefs' }).then(p => {
+      const r = {};
+      for (const s of (p && p.energy_sources) || []) { const x = _rate(s); if (!x) continue; const k = { solar: 'pv', battery: 'bat', grid: 'grid' }[s.type]; if (k && !r[k]) r[k] = x; }
+      _eR = r;
+    }).catch(() => { _eR = {}; }).then(() => { const w = [..._eW]; _eW.clear(); w.forEach(f => { try { f(_eR); } catch (e) { } }); });
+  }
+  return null;
 }
