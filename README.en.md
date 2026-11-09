@@ -104,7 +104,7 @@ Either way, the resource `/hacsfiles/isola-ha/isola-ha.js` is added automaticall
 <details>
 <summary><b>Alternative: manual installation</b></summary>
 
-1. Open the [latest release](https://github.com/inusoa/isola-ha/releases/latest) and, at the bottom under **Assets**, download **`isola-ha.js`** and **`three.module.min.js`** (since 1.0.0-beta.8 Isola is a single file; three.js powers the 3D home and, if missing, is fetched from the internet).
+1. Open the [latest release](https://github.com/inusoa/isola-ha/releases/latest) and, at the bottom under **Assets**, download **`isola-ha.js`** and **`three.module.min.js`** (Isola is a single file; `three.module.min.js` powers the 3D home and goes in the same folder).
 2. Copy them to `/config/www/isola-ha/` in Home Assistant, e.g. with the **File editor**, **Studio Code Server** or **Samba** add-on.
    If the `www` folder didn't exist, **restart Home Assistant** once.
 3. Turn on **Advanced mode**: tap your name bottom left (Profile) and enable *Advanced mode*.
@@ -356,6 +356,18 @@ python3 -m http.server 8000
 All images on this page were made with the demo home.
 
 ---
+
+## For developers: how it is built
+
+The code lives in `src/`. The file that Marketplace and HACS install, `dist/isola-ha.js`, is built from `src/` with [esbuild](https://esbuild.github.io):
+
+```
+npm install
+npm run build     # rebuilds dist/isola-ha.js and dist/three.module.min.js
+npm run check     # checks that dist/ matches src/ (GitHub also runs it on every commit)
+```
+
+Isola loads nothing from third-party sites: no CDN, no Google Fonts. three.js (r163, MIT) comes from `three.module.min.js` next to `isola-ha.js`.
 
 ## Support Isola
 

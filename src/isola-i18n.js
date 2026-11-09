@@ -214,7 +214,7 @@ const D = {
   'Annulla tutti gli scambi': 'Undo all swaps', 'Prova un\'altra disposizione': 'Try another layout', 'Fuori': 'Away',
   // ---------------------------------------------------------------- beta.7: colori delle luci, campanello, editor visivo
   'Colore cambiato': 'Colour changed', 'Bianco caldo': 'Warm white', 'Bianco freddo': 'Cool white', 'Bianco neutro': 'Neutral white', 'Colore': 'Colour', 'Bianco': 'White',
-  'Suonano alla porta': 'Someone’s at the door', 'Parla': 'Talk', 'Campanello': 'Doorbell', 'Nessuna telecamera collegata al campanello': 'No camera linked to the doorbell',
+  'Parla': 'Talk', 'Campanello': 'Doorbell', 'Nessuna telecamera collegata al campanello': 'No camera linked to the doorbell',
   'aperta': 'open', 'aperto': 'open', 'aperte': 'open', 'chiusa': 'closed', 'chiuso': 'closed', 'accesa': 'on', 'acceso': 'on', 'spenta': 'off', 'spento': 'off',
 };
 // frasi con numeri o nomi in mezzo

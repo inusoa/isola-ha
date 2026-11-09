@@ -5,8 +5,11 @@ import './isola-ui.js';
  * Isola Live  = tablet / hub fisso (questa card: type: custom:isola-live)
  * Foto della casa dall'alto (render) + luci, robot, persone, sensori posizionati in pixel sulla foto.
  */
-const VERSION = '1.0.0-beta.8';
+const VERSION = '1.0.0-beta.9';
 const VQ = new URL(import.meta.url).search;
+// tutto ciò che arriva da Home Assistant (nomi, stati, aree, zone) passa da qui prima di finire nell'HTML
+const esc = x => String(x ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+const cssUrl = u => "url('" + String(u).replace(/["'()\\\s<>]/g, ch => encodeURIComponent(ch)) + "')";
 
 // ------------------------------------------------------------------ configurazione predefinita
 // Le posizioni sono in metri, coordinate della scena: x verso destra (cucina), z verso il giardino.
@@ -502,7 +505,11 @@ input[type=range]{width:100%}
   }
   async _houseLoad() {
     if (this._houseLoading) return; this._houseLoading = true;
-    try { const [T, H] = await Promise.all([import('./three.module.min.js' + VQ), import('./isola-house.js' + VQ)]); this._three = T; this._houseLib = H; this._autoKey = null; if (this._hass) this.hass = this._hass; }
+    // three.js arriva solo dal file installato accanto a isola-ha.js (nessuna CDN esterna)
+    let T = null;
+    try { T = await import(new URL('./three.module.min.js', import.meta.url).href + VQ); }
+    catch (e) { console.error('isola-live: three.module.min.js non trovato accanto a isola-ha.js', e); this._houseErr = 'three'; this._initRender(); return; }
+    try { const H = await import('./isola-house.js'); this._three = T; this._houseLib = H; this._autoKey = null; if (this._hass) this.hass = this._hass; }
     catch (e) { console.error('isola-live: casa 3D (file mancanti?)', e); this._houseErr = true; this._initRender(); }
   }
   async _houseMake(sp) {
@@ -535,7 +542,7 @@ input[type=range]{width:100%}
   }
   async _openEditor() {
     if (!(this._hass && this._hass.user && this._hass.user.is_admin)) return;
-    try { await import('./isola-live-editor.js' + VQ); }
+    try { await import('./isola-live-editor.js'); }
     catch (e) { console.error('isola-live: configuratore', e); this._toast('Configuratore non trovato (isola-live-editor.js)'); return; }
     const t = this._saveTarget || { type: 'custom:isola-live', key: null, match: this._user };
     const ed = document.createElement('isola-live-editor');
@@ -567,7 +574,7 @@ input[type=range]{width:100%}
     const box = this._$ && this._$('#floors'); if (!box) return;
     const b = this._base || this._config;
     if (!b || !b.upper) { box.innerHTML = ''; return; }
-    box.innerHTML = `<button data-f="0">Piano terra</button><button data-f="1">${b.upper.short || '1° piano'}</button>`;
+    box.innerHTML = `<button data-f="0">Piano terra</button><button data-f="1">${esc(b.upper.short || '1° piano')}</button>`;
     box.querySelectorAll('button').forEach(x => x.addEventListener('click', ev => { ev.stopPropagation(); this._setFloor(+x.dataset.f); }));
     this._floorMark();
   }
@@ -603,7 +610,7 @@ input[type=range]{width:100%}
     const holder = {};
     try {
       const cfg = i ? this._upperCfg(b) : b;
-      const { RenderView } = await import('./isola-live-render.js' + VQ);
+      const { RenderView } = await import('./isola-live-render.js');
       const rv = new RenderView(el, this._rvOpts(i, holder)); holder.rv = rv;
       await rv.init();
       if (old.view && old.rot === rv.rot) { rv.view = { ...old.view }; rv._apply(); }
@@ -651,12 +658,12 @@ input[type=range]{width:100%}
   }
   async _initRender() {
     if (this._user && this._user.auto !== false && !this._hass) { this._waitHass = true; return; }
-    if (!this._config.image && this._houseOn()) { const ld = this._$('#load'); if (ld) { ld.hidden = false; ld.innerHTML = this._houseErr ? 'Non riesco a disegnare la casa 3D su questo dispositivo: aggiungi la foto della casa (<b>image:</b>) nella configurazione della card' : 'Disegno la casa 3D dalle tue stanze…'; } this._renderChips(); return; }
+    if (!this._config.image && this._houseOn()) { const ld = this._$('#load'); if (ld) { ld.hidden = false; ld.innerHTML = this._houseErr === 'three' ? 'Manca il file <b>three.module.min.js</b> accanto a isola-ha.js: reinstalla Isola dal Marketplace / HACS, oppure copialo dalla release.' : this._houseErr ? 'Non riesco a disegnare la casa 3D su questo dispositivo: aggiungi la foto della casa (<b>image:</b>) nella configurazione della card' : 'Disegno la casa 3D dalle tue stanze…'; } this._renderChips(); return; }
     if (!this._config.image) { const ld = this._$('#load'); if (ld) { ld.hidden = false; ld.innerHTML = 'Aggiungi la foto della casa: <b>image: /local/isola/casa.jpg</b> nella configurazione della card'; } this._renderChips(); return; }
     this._loading = true;
     const ld = this._$('#load'); if (ld) { ld.hidden = false; ld.textContent = 'Caricamento della casa…'; }
     try {
-      const { RenderView } = await import('./isola-live-render.js' + VQ);
+      const { RenderView } = await import('./isola-live-render.js');
       const holder = {};
       const rv = new RenderView(this._$('#rview'), this._rvOpts(this._floor || 0, holder)); holder.rv = rv;
       await rv.init();
@@ -673,7 +680,7 @@ input[type=range]{width:100%}
     } finally { this._loading = false; }
   }
   _icon(icon) {
-    if (customElements.get('ha-icon')) return `<ha-icon icon="${icon}"></ha-icon>`;
+    if (customElements.get('ha-icon')) return `<ha-icon icon="${esc(icon)}"></ha-icon>`;
     return EMOJI[icon] || '•';
   }
   _items() {
@@ -685,7 +692,7 @@ input[type=range]{width:100%}
   async _initScene() {
     this._loading = true;
     try {
-      const { CasaScene } = await import('./casa3d-scene.js' + VQ);
+      const { CasaScene } = await import(new URL('./casa3d-scene.js', import.meta.url).href + VQ);
       const ld = this._$('#load'); if (ld) { ld.hidden = false; ld.textContent = 'Caricamento della casa 3D…'; }
       const s = new CasaScene(this._$('#view'), { quality: this._config.quality || 'auto', onPick: (id, info) => this._pick(id, info), onFrame: a => { if (this._mode() === '3d') this._place(a); } });
       await s.init();
@@ -708,7 +715,7 @@ input[type=range]{width:100%}
     for (const it of this._items()) {
       const el = document.createElement('div');
       el.className = 'pin glass hidden';
-      el.innerHTML = `<span class="ic">${this._icon(it.icon)}</span>${it.type === 'climate' ? '<span class="tp"></span>' : ''}<span class="nm">${it.name}<small></small></span>`;
+      el.innerHTML = `<span class="ic">${this._icon(it.icon)}</span>${it.type === 'climate' ? '<span class="tp"></span>' : ''}<span class="nm">${esc(it.name)}<small></small></span>`;
       let t = null, long = false;
       el.addEventListener('pointerdown', () => { long = false; t = setTimeout(() => { long = true; this._moreInfo(it.readonly ? (it.power || this._entityOf(it)) : this._entityOf(it)); }, 550); });
       el.addEventListener('pointerup', () => { clearTimeout(t); if (!long) this._tap(it); });
@@ -855,10 +862,10 @@ input[type=range]{width:100%}
     this._mk = new Map();
     for (const m of c.sensors) {
       const el = document.createElement('div'); el.className = 'mk off ' + ({ window: 'win', motion: 'mot', camera: 'cam', lock: 'lock' }[m.type] || 'win');
-      el.innerHTML = m.type === 'window' ? `<div class="b">${this._icon('mdi:window-open-variant')}<span>${m.name} aperta</span></div>`
+      el.innerHTML = m.type === 'window' ? `<div class="b">${this._icon('mdi:window-open-variant')}<span>${esc(m.name)} aperta</span></div>`
         : m.type === 'motion' ? '<div class="r"></div><span class="ago"></span>'
-        : m.type === 'camera' ? `<div class="b" title="${m.name}">${this._icon('mdi:cctv')}</div>`
-        : `<div class="b" title="${m.name}">${this._icon('mdi:lock')}</div>`;
+        : m.type === 'camera' ? `<div class="b" title="${esc(m.name)}">${this._icon('mdi:cctv')}</div>`
+        : `<div class="b" title="${esc(m.name)}">${this._icon('mdi:lock')}</div>`;
       if (m.type === 'camera' || m.type === 'lock') el.addEventListener('click', ev => { ev.stopPropagation(); this._moreInfo(m.entity); });
       box.appendChild(el); this._mk.set(m.id, el);
     }
@@ -967,7 +974,7 @@ input[type=range]{width:100%}
     const c = this._base || this._config, P = c.people || []; if (!this._hass) return;
     const box = this._$('#ppl'), home = this._st('zone.home'), now = Date.now();
     const hav = (a, b, cc, dd) => { const R = 6371, r = Math.PI / 180, x = Math.sin((cc - a) * r / 2) ** 2 + Math.cos(a * r) * Math.cos(cc * r) * Math.sin((dd - b) * r / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(x)); };
-    const pic = st => st?.attributes?.entity_picture ? `background-image:url('${(this._hass.hassUrl ? this._hass.hassUrl(st.attributes.entity_picture) : st.attributes.entity_picture)}')` : '';
+    const pic = st => st?.attributes?.entity_picture ? 'background-image:' + cssUrl(this._hass.hassUrl ? this._hass.hassUrl(st.attributes.entity_picture) : st.attributes.entity_picture) : '';
     const ini = p => (p.name || '?').slice(0, 1).toUpperCase();
     this._pp ||= {};
     const away = [];
@@ -987,7 +994,7 @@ input[type=range]{width:100%}
         const et = eta && !isNaN(parseFloat(eta.state)) ? Math.round(parseFloat(eta.state)) : null;
         const fmt = k => k < 1 ? Math.round(k * 1000) + ' m' : (k < 10 ? k.toLocaleString(i18nLoc(), { maximumFractionDigits: 1 }) : Math.round(k)) + ' km';
         const txt = [zone, km != null && km > 0.15 ? fmt(km) : null, et != null ? (coming ? 'a casa tra ' + et + ' min' : et + ' min da casa') : (coming ? 'sta rientrando' : null)].filter(Boolean).join(' · ');
-        away.push(`<span class="pp${coming ? ' come' : ''}" data-e="${p.entity}" style="--pc:${p.color}"><i style="${pic(st)}">${pic(st) ? '' : ini(p)}</i><b>${p.name}</b><small>${txt || 'fuori casa'}</small></span>`);
+        away.push(`<span class="pp${coming ? ' come' : ''}" data-e="${esc(p.entity)}" style="--pc:${esc(p.color)}"><i style="${esc(pic(st))}">${pic(st) ? '' : esc(ini(p))}</i><b>${esc(p.name)}</b><small>${esc(txt || 'fuori casa')}</small></span>`);
       }
       if (isHome && !S.home && !first) { S.arrive = now; this._setRoom(p.id, (c.presence_default || [700, 360]), now); }   // appena rientrato: camminata dal cancelletto
       S.home = isHome; S.st = st; S.p = p;
@@ -1066,7 +1073,7 @@ input[type=range]{width:100%}
         this._rv.anchors.set(mid, () => ({ px: this._pp?.[id]?.px || [0, 0] }));
       }
       const av = el.querySelector('.av'), st = S.st, url = st?.attributes?.entity_picture;
-      const bg = url ? `url('${this._hass.hassUrl ? this._hass.hassUrl(url) : url}')` : '';
+      const bg = url ? cssUrl(this._hass.hassUrl ? this._hass.hassUrl(url) : url) : '';
       if (av.dataset.bg !== bg) { av.dataset.bg = bg; av.style.backgroundImage = bg; av.textContent = bg ? '' : (S.p.name || '?')[0].toUpperCase(); }
       el.querySelector('.nm').textContent = S.p.name;
       if (!S.home || (!c.presence_default && !Object.keys(c.presence || {}).length)) { el.classList.add('off'); continue; }
@@ -1171,7 +1178,7 @@ input[type=range]{width:100%}
     this._$('.roomchip')?.remove();
     if (!r) return;
     const chip = document.createElement('div'); chip.className = 'roomchip glass';
-    chip.innerHTML = `${r.name} ${this._icon('mdi:chevron-right')}`;
+    chip.innerHTML = `${esc(r.name)} ${this._icon('mdi:chevron-right')}`;
     chip.style.left = x + 'px'; chip.style.top = y + 'px';
     chip.addEventListener('click', ev => { ev.stopPropagation(); chip.remove(); history.pushState(null, '', r.path); window.dispatchEvent(new CustomEvent('location-changed', { detail: { replace: false } })); });
     this._$('#labels').appendChild(chip);
@@ -1225,7 +1232,7 @@ input[type=range]{width:100%}
       this._chips = new Map();
       for (const it of items) {
         const el = document.createElement('div'); el.className = 'chip';
-        el.innerHTML = `<span class="ic">${this._icon(it.icon)}</span><div><span>${it.name}</span><small></small></div>`;
+        el.innerHTML = `<span class="ic">${this._icon(it.icon)}</span><div><span>${esc(it.name)}</span><small></small></div>`;
         el.addEventListener('click', () => { if (this._mode() === '3d' && this._scene) this._scene.focus(it.id); this._openSheet(it.id); });
         tray.appendChild(el); this._chips.set(it.id, el);
       }
@@ -1240,12 +1247,12 @@ input[type=range]{width:100%}
       const on = c.lights.filter(l => h.states[l.entity]?.state === 'on').length;
       const al = h.states[c.alarm];
       const parts = [`${this._icon('mdi:ceiling-light')} ${on ? on + (on === 1 ? ' luce accesa' : ' luci accese') : 'Luci spente'}`];
-      if (al) parts.push(`${this._icon('mdi:shield-home')} ${tr(al.state)}`);
+      if (al) parts.push(`${this._icon('mdi:shield-home')} ${esc(tr(al.state))}`);
       const running = [...(this._base || c).devices, ...((this._base || c).upper?.devices || [])].filter(d => /cleaning|mowing|run/.test(d.status ? this._devState(d) : (h.states[this._entityOf(d)]?.state || ''))).map(d => d.name);
-      if (running.length) parts.push('▶ ' + running.join(', '));
-      if (this._open && this._open.length) parts.unshift(`<b style="color:#e53935">${this._icon('mdi:window-open-variant')} ${this._open.length === 1 ? 'Finestra aperta: ' : 'Finestre aperte: '}${this._open.join(', ')}</b>`);
+      if (running.length) parts.push('▶ ' + esc(running.join(', ')));
+      if (this._open && this._open.length) parts.unshift(`<b style="color:#e53935">${this._icon('mdi:window-open-variant')} ${this._open.length === 1 ? 'Finestra aperta: ' : 'Finestre aperte: '}${esc(this._open.join(', '))}</b>`);
       const w = h.states[c.weather];
-      if (w) { const t = w.attributes.temperature; parts.push(`${this._icon(WXI[w.state] || 'mdi:weather-partly-cloudy')} ${WXN[w.state] || w.state}${t != null ? ' · ' + Math.round(t) + '°' : ''}`); }
+      if (w) { const t = w.attributes.temperature; parts.push(`${this._icon(WXI[w.state] || 'mdi:weather-partly-cloudy')} ${esc(WXN[w.state] || w.state)}${t != null ? ' · ' + Math.round(t) + '°' : ''}`); }
       this._$('#stat').innerHTML = parts.map(p => `<span>${p}</span>`).join('');
     }
   }
@@ -1353,10 +1360,10 @@ input[type=range]{width:100%}
       const keys = Object.keys(this._hass.states).filter(k => k.includes(it.related) && /^(sensor|binary_sensor|select|vacuum|lawn_mower)\./.test(k)).slice(0, 14);
       rel = '<div class="rel">' + keys.map(k => { const x = this._hass.states[k]; const u = x.attributes.unit_of_measurement || ''; let v = x.state;
         if (x.attributes.device_class === 'timestamp' && !isNaN(Date.parse(v))) v = new Date(v).toLocaleTimeString(i18nLoc(), { hour: '2-digit', minute: '2-digit' });
-        const nm = (x.attributes.friendly_name || k).replace(it.name, '').trim(); return `<span data-e="${k}">${NAMES[nm.toLowerCase()] || nm || 'Stato'}</span><span>${tr(v)} ${u}</span>`; }).join('') + '</div>';
+        const nm = (x.attributes.friendly_name || k).replace(it.name, '').trim(); return `<span data-e="${esc(k)}">${esc(NAMES[nm.toLowerCase()] || nm || 'Stato')}</span><span>${esc(tr(v))} ${esc(u)}</span>`; }).join('') + '</div>';
     }
-    sh.innerHTML = `<div class="sh-h"><span class="ic">${this._icon(it.icon)}</span><div><b>${it.name}</b><small>${sm.txt || (e ? '' : 'Entità non configurata')}</small></div><button class="x" id="x">✕</button></div>
-      ${extra}<div class="acts">${acts.map(([k, l]) => `<button data-a="${k}">${l}</button>`).join('')}</div>${rel}`;
+    sh.innerHTML = `<div class="sh-h"><span class="ic">${this._icon(it.icon)}</span><div><b>${esc(it.name)}</b><small>${esc(sm.txt || (e ? '' : 'Entità non configurata'))}</small></div><button class="x" id="x">✕</button></div>
+      ${extra}<div class="acts">${acts.map(([k, l]) => `<button data-a="${esc(k)}">${esc(l)}</button>`).join('')}</div>${rel}`;
     sh.querySelector('#x').onclick = () => this._closeSheet();
     sh.querySelectorAll('[data-e]').forEach(x => x.onclick = () => this._moreInfo(x.dataset.e));
     const bri = sh.querySelector('#bri'); if (bri) bri.onchange = () => this._call('light', 'turn_on', { entity_id: e, brightness_pct: +bri.value });
