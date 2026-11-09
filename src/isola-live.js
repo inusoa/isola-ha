@@ -1,10 +1,11 @@
-import { i18nAttach, i18nLang, i18nLoc } from './isola-i18n.js';
+import { i18nAttach, i18nLang, i18nLoc, entName, energyRates } from './isola-i18n.js';
+import './isola-ui.js';
 /* Isola Live – la casa viva per tablet a parete e hub fissi (Home Assistant)
  * Isola       = smartphone (type: custom:isola-mobile)
  * Isola Live  = tablet / hub fisso (questa card: type: custom:isola-live)
  * Foto della casa dall'alto (render) + luci, robot, persone, sensori posizionati in pixel sulla foto.
  */
-const VERSION = '1.0.0-beta.6';
+const VERSION = '1.0.0-beta.8';
 const VQ = new URL(import.meta.url).search;
 
 // ------------------------------------------------------------------ configurazione predefinita
@@ -51,7 +52,7 @@ const PALETTE = ['#f5a524', '#26a69a', '#7e57c2', '#ef5350', '#42a5f5', '#8d6e63
 // configurazione automatica dalle entità di Home Assistant (solo ciò che non ha bisogno di una posizione)
 function liveAuto(h) {
   const S = h.states || {}, ids = Object.keys(S), E = h.entities || {};
-  const dom = id => id.split('.')[0], obj = id => id.split('.')[1], name = id => S[id]?.attributes?.friendly_name || obj(id).replace(/_/g, ' ');
+  const dom = id => id.split('.')[0], obj = id => id.split('.')[1], name = id => entName(h, id);
   const visible = id => { const e = E[id]; return !e || (!e.hidden && !e.entity_category); };
   const first = d => ids.find(id => dom(id) === d && visible(id)) || '';
   const pv = ids.find(id => dom(id) === 'sensor' && S[id].attributes.device_class === 'power' && /(pv|solar|solare|fotovolt|inverter).*(power|potenza)|(active|input)_power/.test(id) && !/batter|grid|rete|meter/.test(id)) || '';
@@ -64,7 +65,8 @@ function liveAuto(h) {
         status: S['sensor.' + obj(id) + '_mower_status'] ? 'sensor.' + obj(id) + '_mower_status' : '', battery: S['sensor.' + obj(id) + '_battery'] ? 'sensor.' + obj(id) + '_battery' : '' })),
     ],
     people: ids.filter(id => dom(id) === 'person').map((id, i) => ({ id: obj(id), entity: id, name: name(id), color: PALETTE[i % PALETTE.length], eta: '' })),
-    energy: { pv_power: pv },
+    // i sensori di potenza scelti nel cruscotto Energia hanno la precedenza (la batteria lì è positiva quando si scarica)
+    energy: (ER => ({ pv_power: ER.pv && S[ER.pv] ? ER.pv : pv, ...(ER.bat && S[ER.bat] ? { battery_power: ER.bat, battery_invert: true } : {}) }))(energyRates(h) || {}),
   };
 }
 const mergeById = (a = [], b = []) => { const out = a.map(x => ({ ...x })); for (const u of b || []) { const i = out.findIndex(x => (u.id && x.id === u.id) || (u.entity && x.entity === u.entity)); if (i >= 0) out[i] = { ...out[i], ...u }; else out.push({ ...u }); } return out; };
@@ -93,6 +95,7 @@ const NAMES = { 'machine state': 'Stato macchina', 'job state': 'Fase', 'complet
 
 class Casa3DCard extends HTMLElement {
   static getStubConfig() { return {}; }
+  static getConfigElement() { return document.createElement('isola-live-card-editor'); }
   setConfig(cfg) {
     this._user = cfg || {}; this._autoKey = null;
     this._setCfg(this._user);
@@ -230,7 +233,7 @@ class Casa3DCard extends HTMLElement {
     this._hass = h;
     i18nLang(h, this._user && this._user.language);
     if (this._user && this._user.auto !== false) {
-      const key = Object.keys(h.states || {}).length;
+      const key = Object.keys(h.states || {}).length + '|' + (energyRates(h, () => { this._autoKey = null; if (this._hass) this.hass = this._hass; }) ? 'e' : '');
       if (key !== this._autoKey) {
         const firstTime = this._autoKey === null; this._autoKey = key;
         const a = liveAuto(h), u = this._user;
@@ -254,6 +257,7 @@ class Casa3DCard extends HTMLElement {
     }
     this._applyKiosk();
     this._editBtn();
+    try { this._bellCheck(h); } catch (e) { console.warn('isola-live: campanello', e); }
     if (this._scene || this._rv) this._sync();
     this._refreshMarkers();
     this._renderChips();
@@ -400,6 +404,13 @@ button.on{background:var(--primary-color,#03a9f4);color:var(--text-primary-color
 input[type=range]{width:100%}
 .load{position:absolute;inset:0;display:grid;place-items:center;font-size:13px;color:#e9eee9;pointer-events:none}
 .load[hidden]{display:none}
+.bell{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:70;width:min(560px,calc(100% - 24px));border-radius:20px;padding:14px;display:flex;flex-direction:column;gap:10px;animation:c3in .2s ease-out}
+.bell[hidden]{display:none}
+.bell .bh{display:flex;align-items:baseline;justify-content:space-between;gap:10px;font-size:17px}
+.bell .bv{position:relative;aspect-ratio:16/9;border-radius:14px;overflow:hidden;background:#000;display:grid;place-items:center;color:#fff;font-size:13px}
+.bell .bv>*{width:100%;height:100%;object-fit:cover;display:block}
+.bell .acts{display:flex;gap:8px}.bell .acts button{flex:1 1 0;padding:12px;font-size:15px;font-weight:700;justify-content:center}
+.bell .acts .pri{background:#2e7d32;color:#fff}
 .toast{position:absolute;left:50%;top:70px;transform:translateX(-50%);padding:6px 10px;border-radius:10px;font-size:12px;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.show{opacity:1}
 .prog{position:absolute;left:50%;bottom:78px;transform:translateX(-50%);padding:7px 12px;border-radius:12px;font-size:12px;white-space:nowrap}
@@ -431,6 +442,7 @@ input[type=range]{width:100%}
   <div class="tray glass" id="tray"></div>
   <div class="sheet glass" id="sheet"></div>
   <div class="toast glass" id="toast"></div>
+  <div class="bell glass" id="bell" hidden role="dialog" aria-label="Campanello"></div>
   <div class="prog glass" id="prog" hidden></div>
 </div>`;
     const $ = s => root.querySelector(s);
@@ -1259,6 +1271,60 @@ input[type=range]{width:100%}
     this._toast((this._st(e)?.state === 'on' ? 'Spengo ' : 'Accendo ') + it.name);
   }
   _call(domain, service, data) { this._hass && this._hass.callService(domain, service, data); }
+  // ---------------------------------------------------------------- campanello
+  // doorbell: event.xxx | binary_sensor.xxx | { entity, camera, name } | [...]   ·   doorbell: false lo spegne
+  _bells(h) {
+    const c = this._user || {}, S = h.states || {}, E = h.entities || {};
+    if (c.doorbell === false) return [];
+    if (this._bellL && this._bellL.k === Object.keys(S).length) return this._bellL.v;
+    const list = [].concat(c.doorbell || []).map(x => typeof x === 'string' ? { entity: x } : x).filter(x => x && x.entity);
+    if (!list.length) for (const id in S) {
+      const a = S[id].attributes || {}, e = E[id];
+      if (e && (e.hidden || e.entity_category)) continue;
+      if ((id.startsWith('event.') && a.device_class === 'doorbell') || (id.startsWith('binary_sensor.') && /doorbell|campanello|_ding$/.test(id))) list.push({ entity: id });
+    }
+    const cams = Object.keys(S).filter(x => x.startsWith('camera.') && !/map|mappa/i.test(x));
+    const v = list.map(b => {
+      if (b.camera) return b;
+      const dv = E[b.entity] && E[b.entity].device_id;
+      const cam = (dv && cams.find(x => E[x] && E[x].device_id === dv)) || cams.find(x => /door|porta|ingresso|cancello|citofono|campanello|front|gate|bell/i.test(x + ' ' + (S[x].attributes.friendly_name || ''))) || cams[0] || '';
+      return { ...b, camera: cam };
+    });
+    this._bellL = { k: Object.keys(S).length, v };
+    return v;
+  }
+  _bellCheck(h) {
+    if (!this._root || !this._$('#bell') || this._editing()) return;
+    this._bellSeen = this._bellSeen || {};
+    for (const b of this._bells(h)) {
+      const s = h.states[b.entity]; if (!s) continue;
+      const isEv = b.entity.startsWith('event.'), v = isEv ? s.state : (s.state === 'on' ? s.last_changed : '');
+      const prev = this._bellSeen[b.entity]; this._bellSeen[b.entity] = v;
+      if (prev === undefined || !v || v === prev || /^(unknown|unavailable)$/.test(v)) continue;
+      const t = Date.parse(v); if (!isNaN(t) && Date.now() - t > 120000) continue;   // suonato mentre il tablet era scollegato: niente finestra
+      this._bellOpen(b);
+    }
+    if (this._bellCam) { this._bellCam.hass = h; const cs = h.states[this._bellNow && this._bellNow.camera]; if (cs) this._bellCam.stateObj = cs; }
+  }
+  _bellOpen(b) {
+    const box = this._$('#bell'), h = this._hass, cam = b.camera && h.states[b.camera];
+    this._bellClose(); this._bellNow = b;
+    this._lastTouch = Date.now(); this._idle();
+    const t = new Date().toLocaleTimeString(i18nLoc(), { hour: '2-digit', minute: '2-digit' });
+    box.innerHTML = `<div class="bh"><b>🔔 Suonano alla porta</b><small>${t}</small></div><div class="bv"></div><div class="acts">${cam ? '<button class="pri" data-b="talk">🎙️ Parla</button>' : ''}<button data-b="close">Chiudi</button></div>`;
+    const v = box.querySelector('.bv');
+    if (cam) {
+      if (customElements.get('ha-camera-stream')) { const el = document.createElement('ha-camera-stream'); el.hass = h; el.stateObj = cam; el.muted = true; el.controls = false; v.appendChild(el); this._bellCam = el; }
+      else { const im = document.createElement('img'); im.alt = ''; const pic = () => { const s = this._hass.states[b.camera]; if (s && s.attributes.entity_picture) im.src = s.attributes.entity_picture + (s.attributes.entity_picture.includes('?') ? '&' : '?') + 't=' + Date.now(); }; pic(); this._bellPic = setInterval(pic, 2000); v.appendChild(im); }
+    } else v.textContent = 'Nessuna telecamera collegata al campanello';
+    box.querySelectorAll('[data-b]').forEach(x => x.addEventListener('click', ev => { ev.stopPropagation(); const a = x.dataset.b; this._bellClose(); if (a === 'talk') this._moreInfo(b.camera); }));
+    box.hidden = false;
+    this._bellT = setTimeout(() => this._bellClose(), 90000);
+  }
+  _bellClose() {
+    clearTimeout(this._bellT); clearInterval(this._bellPic); this._bellPic = null; this._bellCam = null; this._bellNow = null;
+    const box = this._$ && this._$('#bell'); if (box) { box.hidden = true; box.innerHTML = ''; }
+  }
   _moreInfo(entityId) {
     if (!entityId) return;
     this.dispatchEvent(new CustomEvent('hass-more-info', { bubbles: true, composed: true, detail: { entityId } }));
@@ -1316,5 +1382,5 @@ input[type=range]{width:100%}
 }
 if (!customElements.get('isola-live')) customElements.define('isola-live', Casa3DCard);
 window.customCards = window.customCards || [];
-if (!window.customCards.find(x => x.type === 'isola-live')) window.customCards.push({ type: 'isola-live', name: 'Isola Live', description: 'La casa viva per tablet a parete e hub fissi (Isola è per smartphone)', preview: false });
+if (!window.customCards.find(x => x.type === 'isola-live')) window.customCards.push({ type: 'isola-live', name: 'Isola Live', description: 'La casa viva per tablet a parete e hub fissi (Isola è per smartphone)', preview: false, documentationURL: 'https://github.com/inusoa/isola-ha' });
 console.info(`%c ISOLA LIVE %c ${VERSION} `, 'background:#2e7d32;color:#fff;border-radius:3px 0 0 3px', 'background:#ddd;color:#222;border-radius:0 3px 3px 0');

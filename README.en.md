@@ -9,7 +9,7 @@ The home interface that sets itself up: elegant on your phone, alive on your tab
 <a href="https://github.com/inusoa/isola-ha/releases/latest"><img alt="Version" src="https://img.shields.io/github/v/release/inusoa/isola-ha?include_prereleases&style=flat-square&color=5fd0bd&label=version"></a>
 <a href="https://github.com/inusoa/isola-ha/releases"><img alt="Download" src="https://img.shields.io/github/downloads/inusoa/isola-ha/total?style=flat-square&color=f5b544&label=downloads"></a>
 <a href="https://github.com/inusoa/isola-ha/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/inusoa/isola-ha?style=flat-square&color=f3efe7&label=stars"></a>
-<a href="https://hacs.xyz"><img alt="HACS" src="https://img.shields.io/badge/HACS-custom%20repository-41BDF5?style=flat-square"></a>
+<a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=inusoa&repository=isola-ha&category=plugin"><img alt="Marketplace and HACS" src="https://img.shields.io/badge/Marketplace%20%C2%B7%20HACS-install-41BDF5?style=flat-square"></a>
 <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-8bc34a?style=flat-square"></a>
 </p>
 
@@ -48,6 +48,10 @@ From Isola you open Isola Live with one tap: the same home, on any screen.
 - **Robots and appliances:** vacuum, lawn mower and washing machine appear while working, with progress and controls.
 - **Isola Live:** realistic per-room lighting, day/night cycle from the real sun, moving robots, presence, solar panel, night picture-frame mode, full screen for tablets.
 - **Visual configurator:** lights, rooms, robots and sensors are placed on the photo with a finger and saved to the dashboard, no YAML needed.
+- **Colour lights:** below the brightness slider, a colour slider and a white slider (warm → cool) when the bulb supports them.
+- **Doorbell:** when someone rings, Isola Live opens the live camera with **Talk** (the camera dialog's two-way audio) and **Close**.
+- **Energy with no setup:** if you picked power sensors in Home Assistant's Energy dashboard, Isola uses them.
+- **Ready in one tap:** the **Isola** dashboard shows up among the dashboards you can create, Isola Live among the community sections, and the cards have a visual editor.
 
 > **Beta release.** It works with any home's data, but it's young: if something isn't detected or doesn't look right, please open an Issue with a screenshot.
 
@@ -57,38 +61,57 @@ From Isola you open Isola Live with one tap: the same home, on any screen.
 
 - Home Assistant **2024 or newer** (latest version recommended).
 - Your rooms created as **Areas** (Settings › Areas, labels & zones) and your devices assigned to them: this is how Isola knows what is where.
-- To install with HACS: [HACS](https://hacs.xyz) already installed.
+- To install: Home Assistant's **Marketplace** (2026.11 or newer) or [HACS](https://hacs.xyz) on older versions.
 - For Isola Live: nothing, the 3D home draws itself from your areas. For a photographic look, a **top-down photo or render of your home** (JPG or PNG, landscape; a render from Planner 5D, Sweet Home 3D or a generated image works great).
 
 ---
 
 ## Step-by-step installation
 
-### Step 1 · Install Isola with HACS (recommended)
+### Step 1 · Install Isola
 
-1. In Home Assistant open **HACS** from the sidebar.
-2. Top right, tap the **⋮** menu › **Custom repositories**.
-3. In the **Repository** field paste:
+**The quickest way:** open this page on the computer or phone where you use Home Assistant and tap the button.
+
+[![Open Isola in Home Assistant](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=inusoa&repository=isola-ha&category=plugin)
+
+Home Assistant opens on Isola's page: tap **Download**, confirm and **reload** the page. On the phone app: Settings › Companion app › Troubleshooting › **Reset frontend cache**.
+
+<details open>
+<summary><b>Home Assistant 2026.11 or newer: from the Marketplace</b></summary>
+
+Since 2026.11, community cards are installed from Home Assistant's **Marketplace** (it replaced HACS).
+
+1. Open **Settings › Marketplace**.
+2. Isola is waiting to join the catalogue: meanwhile use **Add from link** (in the top-right **⋮** menu) and paste:
    ```
    https://github.com/inusoa/isola-ha
    ```
-4. As **Type** choose **Dashboard** and tap **Add**. Close the dialog.
-5. Search HACS for **Isola**, open it and tap **Download** (bottom right), then confirm.
-6. When HACS asks, **reload** the page. On the phone app: Settings › Companion app › Troubleshooting › **Reset frontend cache**.
-
-HACS adds the resource `/hacsfiles/isola-ha/isola-ha.js` automatically; it loads both Isola and Isola Live.
+   As type choose **Dashboard**.
+3. Open **Isola**, tap **Download** and reload the page.
+</details>
 
 <details>
-<summary><b>Alternative: manual installation (without HACS)</b></summary>
+<summary><b>Older Home Assistant: with HACS</b></summary>
 
-1. Open the [latest release](https://github.com/inusoa/isola-ha/releases/latest) and, at the bottom under **Assets**, download **all** the `.js` files (`isola-ha.js`, `isola-mobile.js`, `isola-live.js`, `isola-live-render.js`, `isola-live-editor.js`, `isola-i18n.js`, `isola-house.js`, `three.module.min.js`).
+1. In Home Assistant open **HACS** from the sidebar.
+2. Top right, tap the **⋮** menu › **Custom repositories**.
+3. In the **Repository** field paste `https://github.com/inusoa/isola-ha`, as **Type** choose **Dashboard** and tap **Add**.
+4. Search for **Isola**, open it and tap **Download**, then confirm and reload the page.
+</details>
+
+Either way, the resource `/hacsfiles/isola-ha/isola-ha.js` is added automatically and loads both Isola and Isola Live.
+
+<details>
+<summary><b>Alternative: manual installation</b></summary>
+
+1. Open the [latest release](https://github.com/inusoa/isola-ha/releases/latest) and, at the bottom under **Assets**, download **`isola-ha.js`** and **`three.module.min.js`** (since 1.0.0-beta.8 Isola is a single file; three.js powers the 3D home and, if missing, is fetched from the internet).
 2. Copy them to `/config/www/isola-ha/` in Home Assistant, e.g. with the **File editor**, **Studio Code Server** or **Samba** add-on.
    If the `www` folder didn't exist, **restart Home Assistant** once.
 3. Turn on **Advanced mode**: tap your name bottom left (Profile) and enable *Advanced mode*.
 4. Go to **Settings › Dashboards**, top-right **⋮** menu › **Resources** › **Add resource**:
    - URL: `/local/isola-ha/isola-ha.js?v=1`
    - Type: **JavaScript module**
-5. Reload the page (on the phone: reset the frontend cache as in step 6 above).
+5. Reload the page (on the phone: reset the frontend cache).
 
 When you update the files by hand, change `?v=1` to `?v=2`, `?v=3`… so browsers fetch the new version.
 </details>
@@ -99,6 +122,10 @@ Settings › Dashboards › **⋮** › **Resources**: there must be a line with
 In the browser developer tools (console) you will see **ISOLA** and **ISOLA LIVE** with their version number.
 
 ### Step 3 · Create the Isola dashboard for your phone
+
+**The quickest way (Home Assistant 2026.5 or newer):** **Settings › Dashboards › + Add dashboard** and pick **Isola** from the list. You get a dashboard with two ready views, **Isola** for the phone and **Isola Live** for the tablet. To change it later, take control from the pencil.
+
+**Or by hand:**
 
 1. **Settings › Dashboards › + Add dashboard › New dashboard from scratch**.
 2. Title: **Isola**, any icon (e.g. `mdi:island`), keep *Show in sidebar* on. Tap **Create**.
@@ -175,6 +202,8 @@ Try it: [demo without a photo](https://inusoa.github.io/isola-ha/demo/demo-auto.
    ```
 3. Save. You'll see your home with the bottom bar already listing the lights, robots and people found automatically.
 
+**In a sections dashboard (Home Assistant 2026.11):** in edit mode tap **+ Add section** and pick **Isola Live** from the *community sections*: it takes the full width. You can also add the card from the card picker: photo, title, language, full screen and 3D home are set in the visual editor, no YAML.
+
 ### Step 5b · Put things in their place: the configurator 📐
 
 No coordinates to type. If you are a Home Assistant **administrator**, Isola Live's top bar has a **📐 Posiziona** (Place) button.
@@ -239,7 +268,7 @@ Every item is placed with `px: [x, y]` (photo pixels). Lights and robots are mat
 
 ### Step 7 · Updates
 
-With HACS: new versions appear in **Settings › Updates**. Install and reload the page (on the phone: reset the frontend cache).
+With the Marketplace or HACS: new versions appear in **Settings › Updates**. Install and reload the page (on the phone: reset the frontend cache).
 
 ---
 
@@ -255,7 +284,7 @@ Anything you write in the card overrides what Isola detects. To turn off automat
 | `room_crops` | `{ Kitchen: [910,120,1130,510] }` | Piece of the photo for each room |
 | `weather` | `weather.home` | Weather (if you have more than one) |
 | `alarm` | `alarm_control_panel.home` | Alarm panel |
-| `pv_power` / `pv_today` | `sensor.inverter_power` | Solar: current power and today's yield |
+| `pv_power` / `pv_today` | `sensor.inverter_power` | Solar: current power and today's yield (if you leave it out, the Energy dashboard's power sensor is used) |
 | `battery_soc` / `battery_power` | `sensor.battery_level` | Home battery: level (%) and power |
 | `battery_invert` | `true` | If your battery reports charging as negative |
 | `scenes` | see below | Scene buttons (Leaving, Night, …) |
@@ -291,6 +320,7 @@ Isola detects scripts named like *leave/away*, *night/good night*, *morning*, *h
 | `energy` | `{ px, house_px }` | Solar and battery box |
 | `presence` | `{ binary_sensor.x: [x, y] }` | Where people appear based on motion |
 | `title` | `The Smiths` | Title top left |
+| `doorbell` | `event.front_door` or `{ entity: binary_sensor.ding, camera: camera.entrance }` | Doorbell and the camera to open when it rings (usually found automatically). `doorbell: false` turns it off |
 | `language` | `auto` / `en` / `it` | Language of the interface and the configurator |
 
 ---

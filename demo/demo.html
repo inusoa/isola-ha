@@ -18,7 +18,7 @@ add('person.marco', 'home', { friendly_name: 'Marco', device_trackers: ['device_
 add('person.giulia', 'Lavoro', { friendly_name: 'Giulia', device_trackers: ['device_tracker.telefono_giulia'] });
 add('sensor.telefono_marco_battery_level', '72', { unit_of_measurement: '%', device_class: 'battery' });
 add('sensor.telefono_giulia_battery_level', '41', { unit_of_measurement: '%', device_class: 'battery' });
-add('light.lampadario_soggiorno', 'on', { friendly_name: 'Lampadario', brightness: 180, supported_color_modes: ['brightness'] }, 'soggiorno');
+add('light.lampadario_soggiorno', 'on', { friendly_name: 'Lampadario', brightness: 180, supported_color_modes: ['color_temp', 'hs'], color_mode: 'color_temp', color_temp_kelvin: 2900, min_color_temp_kelvin: 2200, max_color_temp_kelvin: 6500, hs_color: [32, 55] }, 'soggiorno');
 add('light.lampada_divano', 'off', { friendly_name: 'Lampada divano', supported_color_modes: ['onoff'] }, 'soggiorno');
 add('media_player.tv_soggiorno', 'off', { friendly_name: 'TV soggiorno' }, 'soggiorno');
 add('light.cucina_isola', 'off', { friendly_name: 'Luci isola', supported_color_modes: ['brightness'] }, 'cucina');
@@ -32,6 +32,7 @@ add('binary_sensor.finestra_soggiorno', 'off', { friendly_name: 'Finestra soggio
 add('binary_sensor.finestra_cucina', 'on', { friendly_name: 'Finestra cucina', device_class: 'window' }, 'cucina');
 add('binary_sensor.movimento_soggiorno', 'off', { friendly_name: 'Movimento soggiorno', device_class: 'motion' }, 'soggiorno', { lc: iso(4) });
 add('switch.luci_giardino', 'on', { friendly_name: 'Luci giardino' }, 'giardino');
+add('event.campanello', '2026-01-01T08:00:00.000Z', { friendly_name: 'Campanello', device_class: 'doorbell', event_types: ['ring'], event_type: 'ring' }, 'giardino');
 add('camera.giardino', 'idle', { friendly_name: 'Giardino', entity_picture: './demo-cam.svg' }, 'giardino');
 add('binary_sensor.giardino_motion', 'off', { friendly_name: 'Movimento giardino', device_class: 'motion' }, 'giardino', { lc: iso(12) });
 add('vacuum.robi', 'cleaning', { friendly_name: 'Robi', battery_level: 64 }, 'soggiorno');
@@ -68,6 +69,7 @@ const hass = {
     if (m.type === 'frontend/set_user_data') { (window.__ud ||= {})[m.key] = m.value; return null; }
     if (m.type === 'history/history_during_period') { const out = {}; (m.entity_ids || []).forEach(id => { out[id] = [{ s: S[id]?.state || '0', lu: Date.now() / 1000 - 3600 }]; }); return out; }
     if (m.type === 'logbook/get_events') return [];
+    if (m.type === 'energy/get_prefs') return window.__energyPrefs || { energy_sources: [] };
     if (m.type === 'recorder/statistics_during_period') return {};
     return {};
   },
