@@ -9,7 +9,7 @@ The home interface that sets itself up: elegant on your phone, alive on your tab
 <a href="https://github.com/inusoa/isola-ha/releases/latest"><img alt="Version" src="https://img.shields.io/github/v/release/inusoa/isola-ha?include_prereleases&style=flat-square&color=5fd0bd&label=version"></a>
 <a href="https://github.com/inusoa/isola-ha/releases"><img alt="Download" src="https://img.shields.io/github/downloads/inusoa/isola-ha/total?style=flat-square&color=f5b544&label=downloads"></a>
 <a href="https://github.com/inusoa/isola-ha/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/inusoa/isola-ha?style=flat-square&color=f3efe7&label=stars"></a>
-<a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=inusoa&repository=isola-ha&category=plugin"><img alt="Marketplace and HACS" src="https://img.shields.io/badge/Marketplace%20%C2%B7%20HACS-install-41BDF5?style=flat-square"></a>
+<a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=inusoa&repository=isola-ha&category=plugin"><img alt="In the Marketplace and HACS catalogue" src="https://img.shields.io/badge/HACS-Default-41BDF5?style=flat-square"></a>
 <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-8bc34a?style=flat-square"></a>
 </p>
 
@@ -82,21 +82,18 @@ Home Assistant opens on Isola's page: tap **Download**, confirm and **reload** t
 Since 2026.11, community cards are installed from Home Assistant's **Marketplace** (it replaced HACS).
 
 1. Open **Settings › Marketplace**.
-2. Isola is waiting to join the catalogue: meanwhile use **Add from link** (in the top-right **⋮** menu) and paste:
-   ```
-   https://github.com/inusoa/isola-ha
-   ```
-   As type choose **Dashboard**.
-3. Open **Isola**, tap **Download** and reload the page.
+2. Search for **Isola** (it's in the official community catalogue).
+3. Open it, tap **Download** and reload the page.
 </details>
 
 <details>
 <summary><b>Older Home Assistant: with HACS</b></summary>
 
 1. In Home Assistant open **HACS** from the sidebar.
-2. Top right, tap the **⋮** menu › **Custom repositories**.
-3. In the **Repository** field paste `https://github.com/inusoa/isola-ha`, as **Type** choose **Dashboard** and tap **Add**.
-4. Search for **Isola**, open it and tap **Download**, then confirm and reload the page.
+2. Search for **Isola** (it's in the HACS default catalogue).
+3. Open it and tap **Download**, then confirm and reload the page.
+
+If it doesn't show up yet, tap **⋮ › Update information** in HACS (the catalogue refreshes every few hours).
 </details>
 
 Either way, the resource `/hacsfiles/isola-ha/isola-ha.js` is added automatically and loads both Isola and Isola Live.

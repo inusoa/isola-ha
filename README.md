@@ -9,7 +9,7 @@ L'interfaccia di casa che si configura da sola: elegante sul telefono, viva sul 
 <a href="https://github.com/inusoa/isola-ha/releases/latest"><img alt="Versione" src="https://img.shields.io/github/v/release/inusoa/isola-ha?include_prereleases&style=flat-square&color=5fd0bd&label=versione"></a>
 <a href="https://github.com/inusoa/isola-ha/releases"><img alt="Download" src="https://img.shields.io/github/downloads/inusoa/isola-ha/total?style=flat-square&color=f5b544&label=download"></a>
 <a href="https://github.com/inusoa/isola-ha/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/inusoa/isola-ha?style=flat-square&color=f3efe7&label=stelle"></a>
-<a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=inusoa&repository=isola-ha&category=plugin"><img alt="Marketplace e HACS" src="https://img.shields.io/badge/Marketplace%20%C2%B7%20HACS-installa-41BDF5?style=flat-square"></a>
+<a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=inusoa&repository=isola-ha&category=plugin"><img alt="Nel catalogo di Marketplace e HACS" src="https://img.shields.io/badge/HACS-Default-41BDF5?style=flat-square"></a>
 <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/licenza-MIT-8bc34a?style=flat-square"></a>
 </p>
 
@@ -82,21 +82,18 @@ Si apre Home Assistant sulla scheda di Isola: tocca **Scarica** (*Download*), co
 Dalla 2026.11 le card della community si installano dal **Marketplace** di Home Assistant (ha preso il posto di HACS).
 
 1. Apri **Impostazioni › Marketplace**.
-2. Isola è in attesa di entrare nel catalogo: nel frattempo usa **Aggiungi da link** (nel menu **⋮** in alto a destra) e incolla:
-   ```
-   https://github.com/inusoa/isola-ha
-   ```
-   Come tipo scegli **Dashboard**.
-3. Apri **Isola**, tocca **Scarica** e ricarica la pagina.
+2. Cerca **Isola** (è nel catalogo ufficiale della community).
+3. Aprila, tocca **Scarica** e ricarica la pagina.
 </details>
 
 <details>
 <summary><b>Home Assistant più vecchio: con HACS</b></summary>
 
 1. In Home Assistant apri **HACS** dalla barra laterale.
-2. In alto a destra tocca il menu **⋮** › **Repository personalizzati** (*Custom repositories*).
-3. Nel campo **Repository** incolla `https://github.com/inusoa/isola-ha`, come **Tipo** scegli **Dashboard** e tocca **Aggiungi**.
-4. Cerca **Isola**, aprila e tocca **Scarica** (*Download*), poi conferma e ricarica la pagina.
+2. Cerca **Isola** (è nel catalogo predefinito di HACS).
+3. Aprila e tocca **Scarica** (*Download*), poi conferma e ricarica la pagina.
+
+Se non la trovi subito, in HACS tocca **⋮ › Aggiorna informazioni** (il catalogo si aggiorna ogni qualche ora).
 </details>
 
 In tutti e due i casi la risorsa `/hacsfiles/isola-ha/isola-ha.js` si aggiunge da sola e carica sia Isola sia Isola Live.
