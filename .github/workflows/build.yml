@@ -1,0 +1,16 @@
+# Verifica che dist/ (quello che installano Marketplace e HACS) sia costruito esattamente da src/
+# Checks that dist/ (what Marketplace and HACS install) is built exactly from src/
+name: Build check
+on:
+  push:
+  pull_request:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-audit --no-fund
+      - run: npm run check

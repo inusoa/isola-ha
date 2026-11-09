@@ -5,7 +5,7 @@ import './isola-ui.js';
  * Isola Live  = tablet a parete o hub fisso (type: custom:isola-live)
  * Si configura da sola dalle aree e dai dispositivi di Home Assistant; ogni voce si può cambiare nel YAML della card.
  */
-const VERSION = '1.0.0-beta.8';
+const VERSION = '1.0.0-beta.9';
 let IMG_W = 1364, IMG_H = 768;
 // ritagli delle stanze sulla foto della casa: room_crops: { Soggiorno: [x0, y0, x1, y1] } (pixel della foto)
 const applyCrops = c => { const K = c.room_crops || {}; (c.rooms || []).forEach(r => { if (K[r.name]) r.crop = K[r.name]; }); return c; };
@@ -233,7 +233,7 @@ const WIND_DIR = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
 const OPT_IT = { sweeping: 'Aspirazione', mopping: 'Lavaggio', sweeping_and_mopping: 'Aspira e lava', mopping_after_sweeping: 'Prima aspira, poi lava', customized_cleaning: 'Personalizzata', quiet: 'Silenziosa', silent: 'Silenziosa', standard: 'Standard', normal: 'Normale', strong: 'Forte', turbo: 'Turbo', max: 'Massima', low: 'Bassa', medium: 'Media', mid: 'Media', high: 'Alta', auto: 'Automatica', on: 'Acceso', off: 'Spento', run: 'Avvia', pause: 'Pausa', stop: 'Stop', none: 'Nessuno', cold: 'Fredda', rinse: 'Risciacquo', spin: 'Centrifuga', wash: 'Lavaggio', rinsehold: 'Stop risciacquo', no_spin: 'Senza centrifuga', nospin: 'Senza centrifuga', fast: 'Veloce', slow: 'Lenta', eco: 'Eco', boost: 'Boost', sleep: 'Notte', comfort: 'Comfort', away: 'Fuori', home: 'Casa', both: 'Entrambe', vertical: 'Verticale', horizontal: 'Orizzontale', diffuse: 'Diffusa', focus: 'Concentrata', middle: 'Media', top: 'Alta', bottom: 'Bassa' };
 const NAME_IT = { 'selected map': 'Mappa', 'cleaning mode': 'Modalità di pulizia', 'tight mopping': 'Lavaggio approfondito', 'suction level': 'Potenza di aspirazione', 'volume': 'Volume', 'filter left': 'Filtro residuo', 'main brush left': 'Spazzola principale residua', 'side brush left': 'Spazzola laterale residua', 'mop pad left': 'Panno residuo', 'filter time left': 'Filtro, ore residue', 'main brush time left': 'Spazzola principale, ore residue', 'side brush time left': 'Spazzola laterale, ore residue', 'reset filter': 'Azzera filtro', 'reset main brush': 'Azzera spazzola principale', 'reset side brush': 'Azzera spazzola laterale', 'reset mop pad': 'Azzera panno', 'water volume': 'Quantità d’acqua', 'mop pad humidity': 'Umidità del panno', 'cleaning time': 'Tempo di pulizia', 'cleaned area': 'Area pulita', 'battery level': 'Batteria', 'battery': 'Batteria', 'status': 'Stato', 'current room': 'Stanza attuale', 'water tank': 'Serbatoio acqua', 'cleaning history': 'Ultima pulizia', 'wifi strength': 'Segnale Wi-Fi', 'online': 'Connessione', 'schedule': 'Programma', 'mower status': 'Stato', 'rain sensor active': 'Pioggia rilevata', 'do not disturb': 'Non disturbare', 'carpet boost': 'Spinta sui tappeti', 'child lock': 'Blocco bambini', 'remote control': 'Controllo remoto', 'rinse cycles': 'Risciacqui', 'bubble soak': 'Ammollo a bolle', 'spin level': 'Centrifuga', 'energy saved': 'Energia risparmiata', 'machine state': 'Stato macchina', 'job state': 'Fase', 'completion time': 'Fine prevista', 'map': 'Mappa', 'total cleaning time': 'Tempo totale di pulizia', 'total cleaned area': 'Area totale pulita', 'cleaning count': 'Numero di pulizie', 'first cleaning date': 'Prima pulizia', 'dnd start': 'Inizio non disturbare', 'dnd end': 'Fine non disturbare', 'resume cleaning': 'Riprendi la pulizia', 'auto empty': 'Svuotamento automatico', 'self clean': 'Autopulizia', 'charging': 'In carica', 'vacuum status': 'Stato', 'fresh water tank status': 'Acqua pulita', 'waste water tank status': 'Acqua sporca', 'cleaning method': 'Metodo di pulizia', 'suction mode power': 'Potenza di aspirazione', 'running speed': 'Velocità', 'error': 'Errore', 'state': 'Stato', 'task status': 'Attività', 'mop pad': 'Panno', 'detergent left': 'Detergente residuo' };
 const BIN_IT = { battery_charging: ['In carica', 'No'], plug: ['Collegato', 'Scollegato'], power: ['Acceso', 'Spento'], connectivity: ['Online', 'Offline'], moisture: ['Bagnato', 'Asciutto'], problem: ['Problema', 'Ok'], lock: ['Sbloccato', 'Bloccato'], door: ['Aperta', 'Chiusa'], window: ['Aperta', 'Chiusa'], opening: ['Aperto', 'Chiuso'], garage_door: ['Aperta', 'Chiusa'], motion: ['Movimento', 'Nessuno'], occupancy: ['Presenza', 'Nessuno'], presence: ['Presente', 'Assente'], running: ['In funzione', 'Fermo'], update: ['Disponibile', 'Aggiornato'], battery: ['Scarica', 'Ok'], safety: ['Pericolo', 'Ok'], tamper: ['Manomesso', 'Ok'], sound: ['Suono', 'Silenzio'], vibration: ['Vibrazione', 'Ferma'] };
-const STATE_IT = { working: 'Taglio in corso', wet: 'Bagnato', dry: 'Asciutto', return: 'Rientro alla base', cleaning: 'Pulizia in corso', docked: 'In base', returning: 'Rientro alla base', paused: 'In pausa', idle: 'Fermo', error: 'Errore', mowing: 'Taglio in corso', leaving: 'In partenza', charging: 'In carica', charged: 'Carico', on: 'Acceso', off: 'Spento', run: 'In funzione', stop: 'Fermo', pause: 'In pausa', locked: 'Chiuso', unlocked: 'Aperto', playing: 'In riproduzione', standby: 'Standby', home: 'A casa', not_home: 'Fuori', armed_home: 'Inserito in casa', armed_away: 'Inserito', armed_night: 'Notte', disarmed: 'Disinserito', triggered: 'Scattato', open: 'Aperto', closed: 'Chiuso', full: 'Pieno', empty: 'Vuoto', normal: 'Ok', unavailable: 'Non disponibile', unknown: '–', heat: 'Caldo', cool: 'Freddo', dry: 'Deumidifica', fan_only: 'Ventola', auto: 'Auto', none: 'Nessuno' };
+const STATE_IT = { working: 'Taglio in corso', wet: 'Bagnato', return: 'Rientro alla base', cleaning: 'Pulizia in corso', docked: 'In base', returning: 'Rientro alla base', paused: 'In pausa', idle: 'Fermo', error: 'Errore', mowing: 'Taglio in corso', leaving: 'In partenza', charging: 'In carica', charged: 'Carico', on: 'Acceso', off: 'Spento', run: 'In funzione', stop: 'Fermo', pause: 'In pausa', locked: 'Chiuso', unlocked: 'Aperto', playing: 'In riproduzione', standby: 'Standby', home: 'A casa', not_home: 'Fuori', armed_home: 'Inserito in casa', armed_away: 'Inserito', armed_night: 'Notte', disarmed: 'Disinserito', triggered: 'Scattato', open: 'Aperto', closed: 'Chiuso', full: 'Pieno', empty: 'Vuoto', normal: 'Ok', unavailable: 'Non disponibile', unknown: '–', heat: 'Caldo', cool: 'Freddo', dry: 'Deumidifica', fan_only: 'Ventola', auto: 'Auto', none: 'Nessuno' };
 const JOB = { wash: 'Lavaggio', washing: 'Lavaggio', rinse: 'Risciacquo', rinsing: 'Risciacquo', spin: 'Centrifuga', spinning: 'Centrifuga', drying: 'Asciugatura', dry: 'Asciugatura', weightsensing: 'Pesatura', weight_sensing: 'Pesatura', prewash: 'Prelavaggio', pre_wash: 'Prelavaggio', soaking: 'Ammollo', cooling: 'Raffreddamento', airwash: 'Lavaggio ad aria', aiwash: 'Lavaggio', delaywash: 'Partenza ritardata', finish: 'Finito', finished: 'Finito', none: '' };
 const ALARM_TXT = { disarmed: 'allarme disinserito', armed_home: 'allarme inserito in casa', armed_away: 'allarme inserito', armed_night: 'allarme notte', armed_vacation: 'allarme vacanza', armed_custom_bypass: 'allarme inserito', arming: 'allarme in attivazione', pending: 'allarme in attesa', triggered: 'ALLARME SCATTATO' };
 
@@ -608,11 +608,6 @@ class IsolaCard extends HTMLElement {
 
   // ---------------------------------------------------------------- struttura
   _build() {
-    if (!document.getElementById('isola-fonts')) {
-      const l = document.createElement('link'); l.id = 'isola-fonts'; l.rel = 'stylesheet';
-      l.href = 'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Manrope:wght@400;500;600;700&display=swap';
-      document.head.appendChild(l);
-    }
     if (!this._root) { this._root = this.attachShadow({ mode: 'open' }); i18nAttach(this._root); }
     const c = this._config;
     this._root.innerHTML = `<style>${CSS}</style>
@@ -1147,7 +1142,13 @@ class IsolaCard extends HTMLElement {
 
   // ================================================================ ENERGIA (fase 2)
   _n(id, d) { const s = this._st(id); const v = s ? parseFloat(s.state) : NaN; return isNaN(v) ? d : v; }
-  _prices() { return { acq: this._n('input_number.prezzo_acquisto', 0.2125), ven: this._n('input_number.prezzo_vendita', 0.10), q: this._n('input_number.quota_autoconsumo', 35) / 100 }; }
+  // modello di inverter e batteria dal registro dei dispositivi (vuoto se non si sa)
+  _hwLabel(hasB) {
+    const h = this._hass, c = this._config, model = id => { const e = id && h.entities && h.entities[id], d = e && e.device_id && h.devices ? h.devices[e.device_id] : null; return d ? (d.model || '') : ''; };
+    const inv = model(c.pv_power) || model(c.inverter && c.inverter.month), bat = hasB ? model(c.battery_soc) || model(c.battery_power) : '';
+    return [inv, bat && bat !== inv ? bat : ''].filter(Boolean).join(' · ');
+  }
+  _prices() { return { acq: this._n('input_number.prezzo_acquisto', +this._config.price_buy || 0.25), ven: this._n('input_number.prezzo_vendita', 0.10), q: this._n('input_number.quota_autoconsumo', 35) / 100 }; }
   _val(k) { const p = this._prices(); return k * (p.q * p.acq + (1 - p.q) * p.ven); }
 
   // sensori di potenza / energia dei dispositivi (stessa logica delle card attuali)
@@ -1312,7 +1313,7 @@ class IsolaCard extends HTMLElement {
     const good = /rete|grid|on|normal|connesso|running/i.test(stx);
     const tile = (n, s) => `<div class="str"><span>Stringa ${n}</span><b class="disp">${s ? nf(s.w) : '–'}<small> W</small></b><em>${s ? `${nf(s.v)} V · ${nf(s.a, 1)} A` : 'non disponibile'}</em></div>`;
     this._set('x_plant', `<section class="card" aria-label="Impianto">
-      <div class="row sp"><span class="lab">Impianto</span><span style="font-size:12px;color:var(--mut)">SUN2000 3 kW${hasB ? ' · LUNA2000 7 kWh' : ''}</span></div>
+      <div class="row sp"><span class="lab">Impianto</span><span style="font-size:12px;color:var(--mut)">${esc(this._hwLabel(hasB))}</span></div>
       ${strs.length ? `<div class="grid2" style="gap:10px">${strs.map((s, i) => tile(i + 1, s)).join('')}</div>` : ''}
       ${this._trio([
         ['Stato', `<span class="row" style="gap:6px"><i style="width:7px;height:7px;border-radius:4px;background:${good ? 'var(--sea)' : 'var(--sun)'}"></i>${esc(cap(stx))}</span>`],
@@ -1544,9 +1545,9 @@ class IsolaCard extends HTMLElement {
   _verify(now) {
     const c = this._config, n = now;
     if (!this._st('input_number.bolletta_reale_totale')) return '';
-    const p = this._prices(), base = this._n('input_number.prelievo_mensile', 137), fissi = this._n('input_number.costi_fissi_mensili', 28.47);
+    const p = this._prices(), base = this._n('input_number.prelievo_mensile', 0), fissi = this._n('input_number.costi_fissi_mensili', 0);
     const mese_fv = this._n(c.inverter.month, 0);
-    const storico = { 1: 191, 2: 129, 3: 120, 4: 119, 5: 96, 6: 167 }, cons25 = { 10: 201, 11: 225, 12: 273 };
+    const storico = c.bill_history || {}, cons25 = c.bill_consumption || {};   // prelievi noti per mese (facoltativi, dalla configurazione)
     const MESI = ['Gen–Feb', 'Mar–Apr', 'Mag–Giu', 'Lug–Ago', 'Set–Ott', 'Nov–Dic'];
     const sel = this._st('input_select.bolletta_periodo');
     let idx = sel ? MESI.indexOf(sel.state) : -1; if (idx < 0) idx = Math.floor(n.getMonth() / 2);
@@ -1612,8 +1613,7 @@ class IsolaCard extends HTMLElement {
 
   // ---------------------------------------------------------------- Storico
   _manualMonths(y) {
-    const DEF = y === 2026 ? [50.01, 198.21, 291.18, 406.97, 454.89, 468.3, 461.85, 400.86, 342.19, null, null, null] : [];
-    const out = new Array(12).fill(null); DEF.forEach((v, i) => { out[i] = v; });
+    const out = new Array(12).fill(null);   // solo i valori inseriti dall'utente (input_text.produzione_fv_mensile)
     const st = this._st('input_text.produzione_fv_mensile');
     if (st && st.state && !BAD.test(st.state)) st.state.trim().split(/[;\s]+/).slice(0, 12).forEach((t, i) => { const v = parseFloat(t.replace(',', '.')); if (!isNaN(v)) out[i] = v; });
     return out;
