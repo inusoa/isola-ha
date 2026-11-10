@@ -16,6 +16,7 @@ const LABELS = {
   quadro: ['Modalità quadro dopo qualche minuto', 'Picture-frame mode after a few minutes'],
   house: ['Casa 3D automatica quando manca la foto', 'Automatic 3D home when there is no photo'],
   auto: ['Configurazione automatica da aree e dispositivi', 'Automatic setup from areas and devices'],
+  learn: ['La casa impara le abitudini e propone (mai da sola)', 'The house learns your habits and suggests (never acts on its own)'],
 };
 const HELP = {
   image: ['Per esempio /local/isola/casa.jpg. Senza foto Isola Live disegna la casa dalle tue aree.', 'For example /local/isola/casa.jpg. Without a photo, Isola Live draws the home from your areas.'],
@@ -28,7 +29,7 @@ const SCHEMA = {
     { type: 'grid', name: '', schema: [{ name: 'kiosk', selector: { boolean: {} } }, { name: 'night_dim', selector: { boolean: {} } }, { name: 'quadro', selector: { boolean: {} } }, { name: 'house', selector: { boolean: {} } }] },
   ],
   'isola-mobile': h => [
-    { name: 'image', selector: { text: {} } }, { name: 'language', selector: LANG_SEL(h) }, { name: 'auto', selector: { boolean: {} } },
+    { name: 'image', selector: { text: {} } }, { name: 'language', selector: LANG_SEL(h) }, { name: 'auto', selector: { boolean: {} } }, { name: 'learn', selector: { boolean: {} } },
   ],
 };
 class IsolaCardEditor extends HTMLElement {
@@ -37,7 +38,7 @@ class IsolaCardEditor extends HTMLElement {
   set hass(h) { this._h = h; if (this._f) this._f.hass = h; else this._draw(); }
   _data() {
     const c = this._c || {};
-    return { ...c, language: c.language || 'auto', house: c.house !== false, auto: c.auto !== false, night_dim: c.night_dim !== false, kiosk: !!c.kiosk, quadro: c.quadro !== false };
+    return { ...c, language: c.language || 'auto', house: c.house !== false, auto: c.auto !== false, learn: c.learn !== false, night_dim: c.night_dim !== false, kiosk: !!c.kiosk, quadro: c.quadro !== false };
   }
   _draw() {
     if (!this._h || !this._c) return;
@@ -57,6 +58,7 @@ class IsolaCardEditor extends HTMLElement {
       if (k === 'language') { if (x === 'auto') delete c.language; else c.language = x; }
       else if (k === 'house') { if (x) { if (c.house === false) delete c.house; } else c.house = false; }
       else if (k === 'auto') { if (x) delete c.auto; else c.auto = false; }
+      else if (k === 'learn') { if (x) { if (c.learn === false) delete c.learn; } else if (this._kind === 'isola-mobile') c.learn = false; }
       else if (k === 'night_dim' || k === 'quadro') { if (x) delete c[k]; else c[k] = false; }
       else if (k === 'kiosk') { if (x) c.kiosk = true; else delete c.kiosk; }
       else if (x === '' || x == null) delete c[k]; else c[k] = x;

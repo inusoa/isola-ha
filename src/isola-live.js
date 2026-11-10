@@ -5,7 +5,7 @@ import './isola-ui.js';
  * Isola Live  = tablet / hub fisso (questa card: type: custom:isola-live)
  * Foto della casa dall'alto (render) + luci, robot, persone, sensori posizionati in pixel sulla foto.
  */
-const VERSION = '1.0.0-beta.9';
+const VERSION = '1.0.0-beta.11';
 const VQ = new URL(import.meta.url).search;
 // tutto ciò che arriva da Home Assistant (nomi, stati, aree, zone) passa da qui prima di finire nell'HTML
 const esc = x => String(x ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
