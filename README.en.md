@@ -2,6 +2,8 @@
 
 <p align="center"><img src="docs/hero.jpg" alt="Isola on a tablet and a smartphone" width="100%"></p>
 
+<p align="center"><img src="docs/icon.png" alt="Isola" width="96" height="96"></p>
+
 <h1 align="center">Isola for Home Assistant</h1>
 
 <p align="center">
@@ -41,15 +43,20 @@ From Isola you open Isola Live with one tap: the same home, on any screen.
 
 ### What it does
 
-- **Home:** one sentence summing up the house, people with status and phone battery, weather, shortcut to Isola Live, alerts and tips.
-- **Energy:** real-time flow sun → house → battery → grid, device consumption, today's production, bill and history.
+- **Home:** one sentence summing up the house and a page that always keeps the same order: people and weather in one row (tap for the full cards), today's and tomorrow's **calendar**, running devices, the sun, scenes, rooms and **Today at home**.
+- **Today at home:** only things that are true and relevant right now. Front door, alarm and lights show up when nobody is home (at night: front door and windows); below, what happened today.
+- **Calendar:** today's and tomorrow's events from your Home Assistant calendars, with waste collection if you configure it; the next 7 days and adding an event in one tap.
+- **The house that learns:** it looks at the last four weeks and suggests what you usually do at that time ("Around 19:40 you usually turn on the sofa lamp."). It only suggests: you decide with a tap, and every habit can be switched off.
+- **Diary:** who left and came back, doorbell, locks, alarm, robots and washer, hour by hour. When an integration drops and reconnects, no fake events appear.
+- **Talk to the house:** Assist inside Isola, typed or spoken, with replies read aloud if you like.
+- **Energy:** real-time flow sun → house → battery → grid, device consumption, today's production, bill and history. The **plan for the day** shows the expected sun, how long the battery will last and the best time to run the washer and dishwasher.
 - **Security:** alarm in one tap, cameras, open doors and windows, locks.
-- **Rooms:** every Home Assistant area becomes a room with its own crop of the photo, lights (with brightness slider), climate, TV and devices.
+- **Rooms:** every Home Assistant area becomes a room with its own crop of the photo, lights (with brightness slider), climate, TV and devices. The heating thermostat is recognised automatically, with **Manual** and **Program**.
 - **Robots and appliances:** vacuum, lawn mower and washing machine appear while working, with progress and controls.
 - **Isola Live:** realistic per-room lighting, day/night cycle from the real sun, moving robots, presence, solar panel, night picture-frame mode, full screen for tablets.
 - **Visual configurator:** lights, rooms, robots and sensors are placed on the photo with a finger and saved to the dashboard, no YAML needed.
 - **Colour lights:** below the brightness slider, a colour slider and a white slider (warm → cool) when the bulb supports them.
-- **Doorbell:** when someone rings, Isola Live opens the live camera with **Talk** (the camera dialog's two-way audio) and **Close**.
+- **Doorbell:** when someone rings, Isola Live opens the live camera with **Talk** (the camera dialog's two-way audio) and **Close**; on the phone a **Someone's at the door** card appears at the top with the camera.
 - **Energy with no setup:** if you picked power sensors in Home Assistant's Energy dashboard, Isola uses them.
 - **Ready in one tap:** the **Isola** dashboard shows up among the dashboards you can create, Isola Live among the community sections, and the cards have a visual editor.
 
@@ -285,7 +292,11 @@ Anything you write in the card overrides what Isola detects. To turn off automat
 | `battery_soc` / `battery_power` | `sensor.battery_level` | Home battery: level (%) and power |
 | `battery_invert` | `true` | If your battery reports charging as negative |
 | `scenes` | see below | Scene buttons (Leaving, Night, …) |
-| `waste` | `{ today: sensor.waste_today, tomorrow: sensor.waste_tomorrow, from: 17, to: 20 }` | Waste-collection reminder |
+| `waste` | `{ today: sensor.waste_today, tomorrow: sensor.waste_tomorrow, from: 17, to: 20 }` | Waste collection in the Home calendar (the two sensors say what goes out today and tomorrow) |
+| `calendars` | `[{ entity: calendar.family, name: Family, color: '#5ED3C3' }]` | Calendars to show (if omitted: all your Home Assistant calendars) |
+| `learn` | `false` or `{ days: 28 }` | The house that learns: off, or how many days to look at |
+| `doorbells` | `[{ ding: event.door_ding, camera: camera.door, name: Door }]` | Doorbells and intercoms (found automatically; `false` turns the card off) |
+| `heating` | `climate.thermostat` | Heating thermostat, if Isola doesn't recognise it by itself (`false` to not treat it differently) |
 | `casa_live` | same as Isola Live | Map opened from the phone |
 | `auto` | `false` | Turns off automatic configuration |
 | `language` | `auto` / `en` / `it` | Language: follows Home Assistant (Italian, or English for every other language) |

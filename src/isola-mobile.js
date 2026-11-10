@@ -1,15 +1,24 @@
-import { i18nAttach, i18nLang, i18nLoc, entName, energyRates } from './isola-i18n.js';
+import { i18nAttach, i18nLang, i18nLoc, i18nT, entName, energyRates } from './isola-i18n.js';
 import './isola-ui.js';
 /* Isola – l'interfaccia di casa per smartphone (Home Assistant)
  * Isola       = smartphone (questa card: type: custom:isola-mobile)
  * Isola Live  = tablet a parete o hub fisso (type: custom:isola-live)
  * Si configura da sola dalle aree e dai dispositivi di Home Assistant; ogni voce si può cambiare nel YAML della card.
  */
-const VERSION = '1.0.0-beta.9';
+const VERSION = '1.0.0-beta.11';
 let IMG_W = 1364, IMG_H = 768;
 // ritagli delle stanze sulla foto della casa: room_crops: { Soggiorno: [x0, y0, x1, y1] } (pixel della foto)
 const applyCrops = c => { const K = c.room_crops || {}; (c.rooms || []).forEach(r => { if (K[r.name]) r.crop = K[r.name]; }); return c; };
-const HIDE_EMPTY = new Set(['weather', 'night', 'tip', 'devices', 'energy', 'people', 'alerts', 's_access', 's_windows', 's_motion', 'r_more', 'y_prob', 'y_bat', 'y_maint', 'y_net', 'y_star', 'y_scripts', 'y_autos', 'y_events']);
+// ordine della Home secondo il momento della giornata
+const HOME_ORDER = ['ring', 'strip', 'people', 'weather', 'cal', 'devices', 'energy', 'night', 'scenes', 'rooms', 'dline'];
+const CTX_ORDER = {
+  giorno: ['ring', 'learn', 'alerts', 'cal', 'people', 'weather', 'hero', 'energy', 'devices', 'ctx', 'tip', 'diary', 'rooms', 'scenes', 'night'],
+  mattino: ['ring', 'learn', 'ctx', 'cal', 'weather', 'alerts', 'people', 'energy', 'devices', 'hero', 'tip', 'diary', 'rooms', 'scenes', 'night'],
+  uscita: ['ring', 'ctx', 'alerts', 'learn', 'cal', 'devices', 'people', 'hero', 'energy', 'weather', 'diary', 'rooms', 'scenes', 'tip', 'night'],
+  sera: ['ring', 'learn', 'alerts', 'night', 'devices', 'scenes', 'ctx', 'cal', 'people', 'hero', 'weather', 'energy', 'diary', 'rooms', 'tip'],
+  notte: ['ring', 'alerts', 'learn', 'ctx', 'scenes', 'night', 'devices', 'people', 'hero', 'weather', 'energy', 'cal', 'diary', 'rooms', 'tip'],
+};
+const HIDE_EMPTY = new Set(['strip', 'dline', 's_diary', 'cal', 'learn', 'ctx', 'diary', 'y_learn', 'weather', 'night', 'tip', 'devices', 'energy', 'people', 'alerts', 's_access', 's_windows', 's_motion', 'r_more', 'y_prob', 'y_bat', 'y_maint', 'y_net', 'y_star', 'y_scripts', 'y_autos', 'y_events']);
 
 // ------------------------------------------------------------------ configurazione
 // auto: true = Isola legge aree e dispositivi di Home Assistant e si configura da sola.
@@ -41,6 +50,10 @@ const DEFAULTS = {
   inverter: { strings: [] },
   climates: [],
   co2_kg_kwh: 0.25,
+  calendars: [],            // calendari in Home: [{ entity: 'calendar.famiglia', name: 'Famiglia', color: '#5ED3C3' }] (da sola: tutti i calendari di Home Assistant)
+  doorbells: [],            // campanelli e citofoni: [{ ding: 'event.porta_ding', camera: 'camera.porta', name: 'Porta' }] (da sola: li trova); false = scheda spenta
+  learn: { days: 28 },      // la casa che impara dalle abitudini degli ultimi giorni (false = spenta)
+  heating: null,            // termostato del riscaldamento: climate.xxx per sceglierlo, false per non distinguerlo (da sola: i termostati senza "freddo")
 };
 
 // ------------------------------------------------------------------ configurazione automatica
@@ -130,6 +143,8 @@ function autoConfig(h) {
   const n = pick(/notte|night|buonanotte|dormire/), o = pick(/esco|fuori|away|leave|uscita/), hm = pick(/sono_a_casa|arrivo|rientro|welcome|home/), m = pick(/buongiorno|morning|sveglia/);
   if (m) sc.morning = mk(m, 'Buongiorno'); if (o) sc.out = mk(o, 'Esco'); if (n) sc.night = mk(n, 'Notte'); if (hm) sc.home = mk(hm, 'Sono a casa');
   cfg.scenes = sc;
+  // calendari
+  cfg.calendars = ids.filter(id => dom(id) === 'calendar' && visible(id)).map(id => ({ entity: id, name: name(id) }));
   cfg.casa_live = { weather: cfg.weather };
   return cfg;
 }
@@ -206,6 +221,9 @@ const I = {
   stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>',
   target: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/>',
   sistema: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  bell: '<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+  cal: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/>',
+  spark: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
   bin: '<path d="M3 7h18M8 7V5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M5 7l1 13a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1l1-13"/>',
 };
 const svg = (name, size = 22, sw = 1.8, extra = '') => `<svg aria-hidden="true" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" ${extra}>${I[name] || ''}</svg>`;
@@ -395,6 +413,75 @@ h1.alert{color:var(--coral)}
 .nav button.on{width:auto;padding:0 18px;background:var(--pill);color:var(--pillfg);display:flex;gap:8px;font-size:14px;font-weight:700}
 
 /* fogli e messaggi */
+.bri.hue{background:linear-gradient(90deg,#ff3b30,#ffcc00,#34c759,#00c7be,#007aff,#af52de,#ff2d55,#ff3b30)}
+.bri.ct{background:linear-gradient(90deg,#ffb347,#fff3e0 55%,#cfe6ff)}
+[data-page="casa"]>header{order:-100}
+.learn{display:flex;gap:14px;align-items:flex-start;padding:16px 18px;border-radius:24px;background:linear-gradient(135deg,rgba(201,194,240,.18),rgba(94,211,195,.06));border:1px solid rgba(201,194,240,.28)}
+.learn .li{flex:none;width:36px;height:36px;border-radius:18px;display:grid;place-items:center;background:rgba(201,194,240,.2);color:var(--moon)}
+.learn .lt2{display:flex;flex-direction:column;gap:6px;min-width:0;flex:1}.learn small{font-size:11.5px;color:var(--mut)}.learn b{font-size:16px;line-height:1.3}
+.learn .lb{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}.learn .lb button{height:36px;padding:0 14px;border-radius:18px;border:1px solid rgba(243,239,231,.16);background:transparent;font-size:13px;font-weight:700;cursor:pointer}
+.learn .lb button.pri{background:var(--moon);color:#17132B;border-color:transparent}.learn .lb button.warn{background:var(--coral);color:#2A0D08;border-color:transparent}
+.ctx{gap:4px}.crow{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid rgba(243,239,231,.06)}.crow:first-of-type{border-top:0}
+.crow .ci{flex:none;width:34px;height:34px;border-radius:17px;display:grid;place-items:center;background:rgba(243,239,231,.06);color:var(--mut2)}
+.crow.ok .ci{background:rgba(94,211,195,.14);color:var(--sea)}.crow.ko .ci{background:rgba(255,122,102,.16);color:var(--coral)}
+.crow b{display:block;font-size:14.5px}.crow small{display:block;font-size:12px;color:var(--mut);margin-top:2px}
+.ring{gap:12px;border:1px solid rgba(255,122,102,.45);background:linear-gradient(160deg,rgba(255,122,102,.16),var(--surf) 60%);animation:ringin .35s ease-out}
+.ring .rh{display:flex;align-items:center;gap:12px}.ring .rb{width:44px;height:44px;border-radius:22px;display:grid;place-items:center;background:var(--coral);color:#2A0D08;animation:ringb 1.2s infinite}
+.ring .rh b{font-size:22px;display:block}.ring .rh small{font-size:12.5px;color:var(--mut2)}
+.ring .cam{width:100%;flex:none}.ring .rh{text-align:left}
+.ring .racts{display:flex;gap:10px}.ring .racts button{flex:1;height:52px;border-radius:26px;border:1px solid rgba(243,239,231,.16);background:transparent;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
+.ring .racts button.pri{background:var(--pill);color:var(--pillfg);border-color:transparent}
+@keyframes ringb{0%,100%{transform:rotate(0)}15%{transform:rotate(-14deg)}30%{transform:rotate(12deg)}45%{transform:rotate(-8deg)}60%{transform:rotate(0)}}
+@keyframes ringin{from{transform:translateY(-10px);opacity:0}to{transform:none;opacity:1}}
+.diary{gap:2px}.drow{display:flex;align-items:center;gap:12px;padding:9px 0;font-size:14px;border-top:1px solid rgba(243,239,231,.06)}.drow:first-of-type{border-top:0}
+.drow .di{flex:none;width:30px;height:30px;border-radius:15px;display:grid;place-items:center;background:rgba(243,239,231,.06);color:var(--mut2)}.drow.hot .di{background:rgba(255,122,102,.16);color:var(--coral)}
+.drow small{font-size:12px;color:var(--mut)}.dpic{display:block;margin-top:8px;width:100%;max-width:240px;border-radius:14px;cursor:pointer}
+svg.plan{width:100%;height:auto;display:block}svg.plan text{fill:var(--mut);font-size:9px}svg.plan .mid{stroke:rgba(243,239,231,.12);stroke-dasharray:2 3}
+svg.plan .fca{fill:rgba(245,181,68,.22);stroke:rgba(245,181,68,.6);stroke-width:1}svg.plan .act{fill:none;stroke:var(--sun);stroke-width:2.2;stroke-linejoin:round}
+svg.plan .soc{fill:none;stroke:var(--sea);stroke-width:2;stroke-linejoin:round}svg.plan .soc.f{stroke-dasharray:4 4;opacity:.8}svg.plan .now{stroke:var(--tx);stroke-width:1;opacity:.5}
+.leg{display:flex;gap:14px;font-size:11.5px;color:var(--mut)}.leg i{display:inline-block;width:12px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}.leg .l1{background:rgba(245,181,68,.5)}.leg .l2{background:var(--sun)}.leg .l3{background:var(--sea)}
+.best{display:flex;flex-direction:column;gap:2px}.brow{display:flex;align-items:center;gap:10px;padding:8px 0;font-size:14px;border-top:1px solid rgba(243,239,231,.06)}.brow b{flex:1}.brow em{font-style:normal;font-size:12px;font-weight:700;color:var(--sun)}
+.asst{position:fixed;inset:0;z-index:8;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55);animation:ringin .2s ease-out}
+.asst .ab{width:min(100%,560px);max-height:86vh;box-sizing:border-box;background:var(--surf);border-radius:28px 28px 0 0;padding:18px 18px calc(env(safe-area-inset-bottom,0px) + 16px);display:flex;flex-direction:column;gap:12px}
+.asst .ah{display:flex;align-items:center;justify-content:space-between}.asst .ah b{font-size:22px}
+.asst .al{display:flex;flex-direction:column;gap:8px;overflow:auto;min-height:120px;max-height:46vh;padding:2px}
+.asst .am{max-width:84%;padding:10px 14px;border-radius:18px;font-size:15px;line-height:1.4;background:rgba(243,239,231,.06);align-self:flex-start}
+.asst .am.me{align-self:flex-end;background:var(--pill);color:var(--pillfg)}.asst .am.wait{opacity:.6}.asst .am.err{background:rgba(255,122,102,.16);color:#FFD1C8}
+.asst .amc{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}.asst .amc i{font-style:normal;font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:999px;background:rgba(94,211,195,.16);color:var(--sea)}
+.asst .aq{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}.asst .aq button{flex:none;height:34px;padding:0 12px;border-radius:17px;border:1px solid rgba(243,239,231,.14);background:transparent;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.asst .af{display:flex;gap:8px}.asst .af input{flex:1;min-width:0;height:52px;border-radius:26px;border:1px solid rgba(243,239,231,.16);background:rgba(243,239,231,.05);color:var(--tx);font:inherit;font-size:16px;padding:0 18px}
+.asst .amic{flex:none;width:52px;height:52px;border-radius:26px;border:0;background:var(--sea);color:#082520;display:grid;place-items:center;cursor:pointer}
+.asst .amic.rec{background:var(--coral);color:#2A0D08;animation:micp 1.1s infinite}
+@keyframes micp{0%{box-shadow:0 0 0 0 rgba(255,122,102,.55)}100%{box-shadow:0 0 0 16px rgba(255,122,102,0)}}
+.cal{gap:2px}.crow2{display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid rgba(243,239,231,.06)}.crow2:first-of-type{border-top:0}
+.crow2 i{flex:none;width:8px;height:34px;border-radius:4px;opacity:.85}.crow2 b{display:block;font-size:15px}.crow2 small{display:block;font-size:12.5px;color:var(--mut);margin-top:2px}
+.crow2.live b{color:var(--sea)}
+.calf input{height:48px;border-radius:14px;border:1px solid rgba(243,239,231,.16);background:rgba(243,239,231,.05);color:var(--tx);font:inherit;font-size:16px;padding:0 14px;min-width:0}
+.calf input[type=checkbox]{height:auto;width:20px}.calr{display:flex;gap:10px;align-items:center}.calr input{flex:1}.calr label{display:flex;gap:8px;align-items:center;font-size:14px;white-space:nowrap}
+[data-page="casa"]>[data-o="learn"],[data-page="casa"]>[data-o="alerts"],[data-page="casa"]>[data-o="diary"],[data-page="casa"]>[data-o="tip"]{display:none!important}
+[data-page="casa"]:not(.xopen)>[data-o="people"],[data-page="casa"]:not(.xopen)>[data-o="weather"]{display:none!important}
+.strip{display:flex;align-items:center;width:100%;border:0;background:var(--surf);border-radius:24px;padding:10px 8px 10px 6px;cursor:pointer;text-align:left;color:var(--tx);font:inherit;box-sizing:border-box}
+.strip .sc{display:flex;align-items:center;gap:9px;min-width:0;flex:1 1 0;padding:0 8px}.strip .sc+.sc{border-left:1px solid var(--line)}
+.strip .av{width:36px;height:36px}.strip .av .ring{border-radius:18px;padding:2px}.strip .av .pic{font-size:14px}.strip .av .badge{width:17px;height:17px;border-radius:9px;right:-4px;bottom:-4px;border-width:1.5px}.strip .av .badge svg{width:9px;height:9px}
+.strip .pname{font-size:14px}.strip .pwhere{font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.strip .wxs{flex:0 0 auto}.strip .wxs>svg{flex:none}.strip .wxs .pname{font-size:18px;line-height:1.1}.strip .wxs .pwhere{color:var(--mut)}
+.strip .sc{gap:7px;padding:0 6px}.strip .av{width:32px;height:32px}.strip .av .ring{border-radius:16px}.strip .wxs .pwhere{max-width:58px}.strip .pname{font-size:13.5px}.strip .pwhere{font-size:11px}
+.strip .sx{flex:none;color:var(--mut);display:grid}.strip.on{box-shadow:inset 0 0 0 1px rgba(243,239,231,.12)}
+.now .learn{margin:4px 0 6px}
+.nmore{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:6px;min-height:38px;padding:6px 14px;border-radius:19px;border:1px solid rgba(243,239,231,.12);background:none;color:var(--mut2);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;line-height:1.3;text-align:center}
+.card .tip{padding:12px 14px;border-radius:18px;gap:12px;align-items:center}.card .tip .ti{width:34px;height:34px;border-radius:12px}.card .tip b{font-size:14px}.card .tip p{font-size:12.5px;margin-top:2px}
+.sol{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px;background:rgba(245,181,68,.08);border:1px solid rgba(245,181,68,.22)}.sol .ti{flex:none;width:34px;height:34px;border-radius:12px;background:rgba(245,181,68,.16);color:var(--sun);display:grid;place-items:center}
+.sol b{display:block;font-size:14px}.sol small{display:block;font-size:12px;color:var(--mut3);margin-top:2px}
+[data-o="rooms"] .hero{height:124px;border-radius:22px}[data-o="rooms"] .hero .cap{left:16px;right:14px;bottom:12px}[data-o="rooms"] .hero .cap b{font-size:18px}[data-o="rooms"] .hero .cap small{font-size:12px}[data-o="rooms"] .hero .live{top:10px;left:10px}[data-o="rooms"] .hero .go{transform:scale(.85)}
+.rgrid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.grid2.rgrid>.room:last-child:nth-child(odd){grid-column:auto}
+.rgrid .room{border-radius:18px}.rgrid .room .ph{height:auto;aspect-ratio:165/96}.rgrid .room .rt{padding:8px 10px 10px}.rgrid .room .rt b{font-size:13px;line-height:1.2}.rgrid .room .rt span{font-size:11px;line-height:1.3}
+.dline{display:flex;align-items:center;gap:10px;width:100%;padding:12px 16px;border:0;border-radius:20px;background:var(--surf);color:var(--mut3);font:inherit;font-size:13px;line-height:1.35;text-align:left;cursor:pointer;box-sizing:border-box}
+.dline b{display:inline;color:var(--tx);font-weight:600}.dline .di{flex:none;width:30px;height:30px;border-radius:15px;display:grid;place-items:center;background:rgba(243,239,231,.06);color:var(--mut2)}.dline .di.hot{background:rgba(255,122,102,.16);color:var(--coral)}.dline .link{flex:none}
+.cal .cday,.dcard .cday{display:block;font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:10px 0 2px}.cal .cday+.crow2,.cal .cday+.cnone{border-top:0}
+.cnone{margin:6px 0 4px;font-size:13.5px;color:var(--mut)}
+.dcard .drow{font-size:13.5px}.dcard .learn{margin:4px 0 6px}
+.bigscene.done{background:var(--surf);color:var(--tx);box-shadow:inset 0 0 0 1px rgba(94,211,195,.28)}.bigscene.done .bi{background:rgba(94,211,195,.14);color:var(--sea)}.bigscene.done small{opacity:1;color:var(--mut3)}
+.asst .ax{display:flex;justify-content:space-between}.asst .ax button{background:none;border:0;color:var(--mut);font-size:12.5px;font-weight:600;cursor:pointer;padding:4px 2px}
 .sheet{position:fixed;inset:0;z-index:5;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.5)}
 .sheet .box{width:min(100%,560px);box-sizing:border-box;background:var(--surf);border-radius:28px 28px 0 0;padding:22px 20px calc(env(safe-area-inset-bottom,0px) + 22px);display:flex;flex-direction:column;gap:16px}
 .sheet .box b{font-size:20px}
@@ -517,8 +604,6 @@ button.arow{cursor:pointer}
 .noimg small{font-size:13px}
 .bri{-webkit-appearance:none;appearance:none;margin:0 14px 14px;height:28px;border-radius:14px;background:rgba(42,29,5,.18);outline:none}
 .bri::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:14px;background:#2A1D05;border:3px solid var(--sun)}
-.bri.hue{background:linear-gradient(90deg,#ff3b30,#ffcc00,#34c759,#00c7be,#007aff,#af52de,#ff2d55,#ff3b30)}
-.bri.ct{background:linear-gradient(90deg,#ffb347,#fff3e0 55%,#cfe6ff)}
 .bri::-moz-range-thumb{width:24px;height:24px;border-radius:12px;background:#2A1D05;border:3px solid var(--sun)}
 .arow .val{font-size:14px;font-weight:700;color:var(--tx)}
 .arow.card2{background:var(--surf);border-radius:22px;padding:12px 16px;border:0}
@@ -594,6 +679,12 @@ class IsolaCard extends HTMLElement {
     if (!this._root) this._build();
     if (this._live) this._live.hass = h;
     (this._camEls || []).forEach(e => { e.hass = h; });
+    if (this._ringCam) this._ringCam.hass = h;
+    if (this._root && this._config.doorbells !== false) {
+      this._ringBoot();
+      const r = this._ringActive(new Date()), k = r ? r.ding + '@' + r.t : '';
+      if (k && k !== this._ringLast) { this._ringLast = k; if (this._page !== 'casa') { this._closeLive(); this._goPage('casa'); } }
+    }
     this._subscribe();
     this._schedule();
   }
@@ -622,24 +713,31 @@ class IsolaCard extends HTMLElement {
             <h1 class="disp" data-s="title"></h1>
             <p class="sub" data-s="subtitle"></p>
           </header>
-          <section class="people" data-s="people" aria-label="Chi c'è"></section>
-          <div data-s="weather" hidden></div>
+          <section class="ring card" data-o="ring" hidden aria-live="assertive"></section>
+          <div data-s="learn" data-o="learn" hidden></div>
+          <div data-s="ctx" data-o="ctx" hidden></div>
+          <div data-s="cal" data-o="cal" hidden></div>
+          <div data-s="strip" data-o="strip" hidden></div>
+          <section class="people" data-s="people" data-o="people" aria-label="Chi c'è"></section>
+          <div data-s="weather" data-o="weather" hidden></div>
+          <div data-s="night" data-o="night" hidden></div>
+          <section class="card" data-s="energy" data-o="energy" aria-label="Il sole" hidden></section>
+          <section data-s="devices" data-o="devices" aria-label="In funzione" hidden></section>
+          <section data-s="alerts" data-o="alerts" aria-label="Avvisi" hidden></section>
+          <div data-s="tip" data-o="tip" hidden></div>
+          <div data-s="diary" data-o="diary" hidden></div>
+          <section style="display:flex;flex-direction:column;gap:12px" data-o="rooms" aria-label="Stanze">
+            <div class="row sp"><span class="lab">Stanze</span><button class="link" data-act="nav" data-to="stanze">Tutte</button></div>
           <button class="hero" data-act="live" aria-label="Apri Isola Live">
             ${c.image ? `<img src="${esc(c.image)}" alt="La casa vista dall'alto">` : `<span class="noimg" aria-hidden="true">${svg('casa', 64, 1.2)}<small>Aggiungi la foto della casa in Isola Live</small></span>`}
             <span class="shade"></span>
             <span class="live"><i></i>Live</span>
             <span class="cap"><span><b class="disp">Isola Live</b><small data-s="herosub"></small></span><span class="go">${svg('arrow', 20, 2)}</span></span>
           </button>
-          <div data-s="night" hidden></div>
-          <section class="card" data-s="energy" aria-label="Il sole" hidden></section>
-          <section data-s="devices" aria-label="In funzione" hidden></section>
-          <section data-s="alerts" aria-label="Avvisi" hidden></section>
-          <div data-s="tip" hidden></div>
-          <section style="display:flex;flex-direction:column;gap:12px" aria-label="Stanze">
-            <span class="lab">Stanze</span>
-            <div class="grid2" data-s="rooms"></div>
+            <div class="grid2 rgrid" data-s="rooms"></div>
           </section>
-          <section class="scenes" data-s="scenes" aria-label="Scene"></section>
+          <div data-s="dline" data-o="dline" hidden></div>
+          <section class="scenes" data-s="scenes" data-o="scenes" aria-label="Scene"></section>
         </div>
         <div class="page" data-page="energia" hidden>
           <header style="display:flex;flex-direction:column;gap:8px">
@@ -668,6 +766,7 @@ class IsolaCard extends HTMLElement {
           <section class="rsec" aria-label="Telecamere"><div data-s="s_camhead"></div><div class="cams" data-s="s_cams"></div></section>
           <div data-s="s_access" hidden></div>
           <div data-s="s_windows" hidden></div>
+          <div data-s="s_diary" hidden></div>
           <div data-s="s_motion" hidden></div>
         </div>
         <div class="page" data-page="sistema" hidden>
@@ -679,7 +778,7 @@ class IsolaCard extends HTMLElement {
             </div>
             <h1 class="disp" data-s="y_title"></h1>
           </header>
-          <div data-s="y_sys"></div><div data-s="y_prob" hidden></div><div data-s="y_scenes"></div><div data-s="y_autos" hidden></div><div data-s="y_scripts" hidden></div>
+          <div data-s="y_sys"></div><div data-s="y_prob" hidden></div><div data-s="y_scenes"></div><div data-s="y_learn" hidden></div><div data-s="y_autos" hidden></div><div data-s="y_scripts" hidden></div>
           <div data-s="y_maint" hidden></div><div data-s="y_bat" hidden></div><div data-s="y_net" hidden></div><div data-s="y_star" hidden></div><div data-s="y_events" hidden></div>
         </div>
         <div class="page" data-page="sub" hidden>
@@ -715,10 +814,13 @@ class IsolaCard extends HTMLElement {
         <div data-s="overlay"></div>
       </div>`;
     this._app = this._root.querySelector('.app');
+    this._ringEl = this._root.querySelector('section.ring'); this._ctxM = null;
     this._slots = {};
     this._root.querySelectorAll('[data-s]').forEach(e => { this._slots[e.dataset.s] = e; });
     this._cache = {};
     this._app.addEventListener('click', e => this._click(e));
+    // una foto che non si carica (telecamera spenta, anteprima scaduta) sparisce invece di restare un riquadro vuoto
+    this._app.addEventListener('error', e => { const t = e.target; if (t && t.classList && t.classList.contains('dpic')) t.remove(); }, true);
     this._app.addEventListener('change', e => this._change(e));
     // luminosità: mentre trascini il cursore la pagina non si ridisegna e la percentuale si aggiorna dal vivo
     this._app.addEventListener('input', e => {
@@ -764,7 +866,16 @@ class IsolaCard extends HTMLElement {
   }
 
   // ---------------------------------------------------------------- dati
-  _st(id) { return id && this._hass ? this._hass.states[id] : undefined; }
+  _st(id) {
+    if (!id || !this._hass) return undefined;
+    const s = this._hass.states[id];
+    // Ring: dal 2025.4 movimento e campanello sono eventi (event.xxx_motion / event.xxx_ding) e i vecchi sensori non si aggiornano più
+    if ((!s || s.state === 'unavailable' || s.state === 'unknown') && /^binary_sensor\..+_(motion|ding)$/.test(id)) {
+      const e = this._hass.states['event.' + id.slice(14)];
+      if (e) { const t = Date.parse(e.state), on = !isNaN(t) && Date.now() - t < 90000; return { entity_id: id, state: on ? 'on' : 'off', last_changed: isNaN(t) ? e.last_changed : new Date(t).toISOString(), last_updated: e.last_updated, attributes: { ...e.attributes, device_class: /_ding$/.test(id) ? 'occupancy' : 'motion' } }; }
+    }
+    return s;
+  }
   _ok(id) { const s = this._st(id); return s && !BAD.test(s.state) ? s : null; }
   _num(id) { const s = this._ok(id); if (!s) return NaN; const v = parseFloat(s.state); return v; }
   _watts(id) {
@@ -923,7 +1034,7 @@ class IsolaCard extends HTMLElement {
     let title = night ? 'Tutto chiuso.' : 'Tutto tranquillo.', alert = false;
     if (alarm === 'triggered') { title = 'Allarme!'; alert = true; }
     else if (openW.length) { title = openW.length === 1 ? `Finestra ${openW[0].name.toLowerCase()} aperta.` : `${openW.length} finestre aperte.`; alert = night || alarm.startsWith('armed'); }
-    else if (['unlocked', 'open', 'opening', 'jammed'].includes(lock)) { title = lock === 'jammed' ? 'Serratura bloccata.' : 'Portone aperto.'; alert = night || lock === 'jammed'; }
+    else if (['unlocked', 'open', 'opening', 'jammed'].includes(lock) && (night || lock === 'jammed' || (c.people.length && !c.people.some(p => this._st(p.entity)?.state === 'home')))) { title = lock === 'jammed' ? 'Serratura bloccata.' : 'Portone aperto.'; alert = night || lock === 'jammed'; }
     const h1 = this._slots.title; if (h1) h1.classList.toggle('alert', alert);
     this._set('title', esc(title));
     const parts = [];
@@ -931,12 +1042,14 @@ class IsolaCard extends HTMLElement {
     else if (night) parts.push('nessun dispositivo in funzione');
     if (ALARM_TXT[alarm]) parts.push(ALARM_TXT[alarm]);
     if (openW.length > 1) parts.push('aperte: ' + openW.map(w => w.name.toLowerCase()).join(', '));
-    this._set('subtitle', esc(cap(parts.join(', '))) + (parts.length ? '.' : ''));
+    const sub0 = cap(parts.join(', '));
+    this._set('subtitle', esc(sub0) + (sub0 ? '.' : ''));
 
     const me = this._hass.user && this._hass.user.id;
     const ppl = c.people.slice().sort((a, b) => (this._st(b.entity)?.attributes?.user_id === me) - (this._st(a.entity)?.attributes?.user_id === me));
     this._set('people', ppl.map(p => this._personHtml(p, now)).join(''));
     this._set('weather', this._weatherHtml(now, night));
+    this._set('strip', this._stripHtml(now, night));
 
     // casa live
     const lights = [...new Set(c.rooms.flatMap(r => this._roomParts(r).lights))];
@@ -946,19 +1059,29 @@ class IsolaCard extends HTMLElement {
     // sole / notte
     const bt = this._batt(), pv = this._watts(c.pv_power), today = this._kwh(c.pv_today), house = this._houseW();
     if (night) { this._set('energy', ''); this._set('night', this._nightHtml(bt, today, house, now)); }
-    else { this._set('night', ''); this._set('energy', this._energyHtml(pv, today, bt, house, now)); }
+    else { this._set('night', ''); this._set('energy', this._energyHtml(pv, today, bt, house, now) + (this._tipHtml(pv, house, bt, devs.filter(x => x.active)) || this._bestHtml(now))); }
 
     // in funzione
     this._set('devices', active.length ? `<div style="display:flex;flex-direction:column;gap:12px"><span class="lab">In funzione · ${active.length}</span><div class="grid2">${active.map(x => this._devHtml(x)).join('')}</div></div>` : '');
 
     // consiglio del sole
-    this._set('tip', night ? '' : this._tipHtml(pv, house, bt, active));
-    this._set('alerts', c.alerts ? this._alerts(now) : '');
+    this._set('tip', '');
+    this._alItems = []; if (c.alerts) this._alerts(now);
+    this._set('alerts', '');
+    // 1.0: momento della giornata, citofono, abitudini, diario
+    const mode = this._ctxMode(now);
+    if (c.doorbells !== false) this._ringUpdate(now);
+    if (this._learnReady) this._learnLoad(); else if (!this._learnT) this._learnT = setTimeout(() => { this._learnReady = true; this._learnLoad(); }, 3000);
+    this._learnH = this._learnHtml(now); this._set('learn', '');
+    this._set('ctx', '');
+    this._set('diary', ''); this._set('cal', this._calHomeHtml(now));
+    this._set('dline', this._dcardHtml(mode, now));
 
     this._set('rooms', this._roomsList(devs));
     this._set('scenes', this._scenesHtml(night));
     this._slots.scenes.className = night ? '' : 'scenes';
     this._slots.scenes.style.cssText = night ? 'display:flex;flex-direction:column;gap:10px' : '';
+    this._ctxApply(mode);
   }
 
   _personHtml(p, now) {
@@ -1136,7 +1259,15 @@ class IsolaCard extends HTMLElement {
     const s = this._config.scenes;
     const btn = (k, icon) => s[k] ? `<button class="scene" data-act="scene" data-k="${k}">${svg(icon, 18)}${esc(s[k].name)}</button>` : '';
     if (!night) return btn('morning', 'sun') + btn('out', 'exit') + btn('night', 'moon');
-    return (s.night ? `<button class="bigscene" data-act="scene" data-k="night"><span class="bi">${svg('moon', 24, 2)}</span><span style="flex:1"><b>Attiva ${esc(s.night.name)}</b><small>${esc(s.night.sub || '')}</small></span></button>` : '')
+    // 1.1.2 · se la scena Notte è già stata avviata stasera (e l'allarme è inserito) il pulsante lo dice, invece di restare "Attiva"
+    const now = new Date(), ran = s.night ? this._sceneRan('night', now) : null, al = this._st(this._config.alarm)?.state || '';
+    const going = s.night && /^script\./.test(s.night.target || '') && this._st(s.night.target)?.state === 'on';
+    const done = ran && (!al || /^armed/.test(al));
+    const big = !s.night ? ''
+      : going ? `<div class="bigscene done"><span class="bi">${svg('moon', 24, 2)}</span><span style="flex:1"><b>${esc(s.night.name)} in avvio…</b><small>${esc(s.night.sub || '')}</small></span></div>`
+      : done ? `<button class="bigscene done" data-act="scene" data-k="night"><span class="bi">${svg('check', 24, 2.4)}</span><span style="flex:1"><b>${esc(s.night.name)} attiva</b><small>Avviata alle ${hhmm(ran)}${al ? ' · allarme inserito' : ''}</small></span></button>`
+      : `<button class="bigscene" data-act="scene" data-k="night"><span class="bi">${svg('moon', 24, 2)}</span><span style="flex:1"><b>Attiva ${esc(s.night.name)}</b><small>${esc(s.night.sub || '')}</small></span></button>`;
+    return big
       + `<div class="scenes">${btn('home', 'enter')}${btn('out', 'exit')}${btn('morning', 'sun')}</div>`;
   }
 
@@ -1212,7 +1343,7 @@ class IsolaCard extends HTMLElement {
     this._slots.e_sub.hidden = !r.sub;
   }
   _mountTab(tab) {
-    const L = { adesso: ['flow', 'power', 'clima', 'plant'], oggi: ['fc', 'chart', 'dev'], bolletta: ['bill', 'self', 'value', 'tariffe', 'verify', 'dati'], storico: ['months', 'totals', 'native'] };
+    const L = { adesso: ['flow', 'power', 'clima', 'plant'], oggi: ['plan', 'fc', 'chart', 'dev'], bolletta: ['bill', 'self', 'value', 'tariffe', 'verify', 'dati'], storico: ['months', 'totals', 'native'] };
     const body = this._slots.e_body;
     Object.keys(this._slots).filter(k => k.startsWith('x_')).forEach(k => { delete this._slots[k]; delete this._cache[k]; });
     body.innerHTML = L[tab].map(k => `<div data-s="x_${k}" hidden></div>`).join('');
@@ -1293,7 +1424,7 @@ class IsolaCard extends HTMLElement {
       v = kind === 'power' ? (u === 'kW' ? v * 1000 : v) : (u === 'Wh' ? v / 1000 : u === 'MWh' ? v * 1000 : v);
       return { v, id: pick };
     };
-    const cl = (c.climates || []).map(a => {
+    const cl = (c.climates || []).filter(a => !this._isHeat(a)).map(a => {
       const e = this._st(a.entity), st = e ? e.state : 'unavailable', at = e ? e.attributes : {};
       const m = MODE[st] || ['Non disp.', '#6B767E'], onn = !!MODE[st] && st !== 'off';
       const pwo = sensorOf(a.prefix, 'power'), eno = sensorOf(a.prefix, 'energy');
@@ -1350,6 +1481,7 @@ class IsolaCard extends HTMLElement {
   }
   _e_oggi(now, night) {
     const c = this._config, prod = this._n(c.pv_today, 0), F = this._fcIds();
+    this._set('x_plan', this._planHtml(now));
     const rawF = this._n(c.forecast_factor, 0), fac = rawF >= 20 ? Math.min(rawF, 150) / 100 : 1;
     const t = F.today ? this._kwh(F.today) * fac : null, tm = F.tom ? this._kwh(F.tom) * fac : null;
     const rem = F.rem ? this._kwh(F.rem) * fac : (t !== null ? Math.max(t - prod, 0) : null);
@@ -1763,6 +1895,8 @@ class IsolaCard extends HTMLElement {
       const s = this._st(w.entity), on = s && s.state === 'on';
       return `<button class="win${on ? ' open' : ''}" data-act="more" data-id="${esc(w.entity)}">${svg('window', 22)}<span><b>${esc(w.name)}</b><small>${!s ? 'non trovata' : on ? 'Aperta · ' + this._ago(s.last_changed, now) : 'Chiusa'}</small></span></button>`; }).join('')}</div></section>` : '');
 
+    // diario di oggi (in Home resta una riga)
+    this._set('s_diary', this._diaryCard(now, 6));
     // movimenti
     const mv = (S.motion || []).map(id => this._st(id)).filter(Boolean).sort((a, b) => new Date(b.last_changed) - new Date(a.last_changed));
     this._set('s_motion', mv.length ? `<section class="card" style="gap:0;padding:8px 18px" aria-label="Movimenti"><span class="lab" style="padding:10px 0 4px">Ultimi movimenti</span>${mv.map(s => `<button class="mrow" data-act="more" data-id="${esc(s.entity_id)}"><i class="${s.state === 'on' ? 'hot' : ''}"></i><span class="grow">${esc((s.attributes.friendly_name || s.entity_id).replace(/\s*(motion|movimento)$/i, ''))}</span><small>${s.state === 'on' ? 'adesso' : this._ago(s.last_changed, now)}</small></button>`).join('')}</section>` : '');
@@ -1864,10 +1998,11 @@ class IsolaCard extends HTMLElement {
   _climaRoomHtml(x) {
     const s = this._st(x.entity); if (!s) return '';
     const a = s.attributes, mode = s.state, onn = mode !== 'off' && !BAD.test(mode);
-    const ML = { off: 'Spento', cool: 'Freddo', heat: 'Caldo', dry: 'Deumid.', fan_only: 'Ventola', auto: 'Auto', heat_cool: 'Auto' };
+    const hk = this._isHeat(x);
+    const ML = { off: 'Spento', cool: 'Freddo', heat: hk ? 'Manuale' : 'Caldo', dry: 'Deumid.', fan_only: 'Ventola', auto: hk ? 'Programma' : 'Auto', heat_cool: 'Auto' };
     const modes = (a.hvac_modes || ['off', 'cool', 'heat']).filter(m => ML[m]);
     return `<div class="dcard">
-      <div class="row" style="gap:14px"><span class="ai2" style="width:48px;height:48px;border-radius:16px;color:${onn ? 'var(--water)' : 'var(--mut2)'}">${svg('snow', 24)}</span>
+      <div class="row" style="gap:14px"><span class="ai2" style="width:48px;height:48px;border-radius:16px;color:${onn ? (hk ? (a.hvac_action === 'heating' ? 'var(--orange)' : 'var(--sun)') : 'var(--water)') : 'var(--mut2)'}">${svg(hk ? 'flame' : 'snow', 24)}</span>
         <span class="grow" data-act="openclima" data-id="${esc(x.entity)}" role="button" style="cursor:pointer"><b style="font-size:17px">${esc(x.name)} ${svg('chev', 14, 2.2)}</b><small>In stanza ${a.current_temperature !== undefined ? nf(a.current_temperature, 1) + '°' : '–'}${a.current_humidity !== undefined ? ' · umidità ' + nf(a.current_humidity) + '%' : ''}</small></span>
         <button class="sw${onn ? ' on' : ''}" data-act="hvac" data-id="${esc(x.entity)}" data-mode="${onn ? 'off' : (a.hvac_modes || []).includes('cool') ? 'cool' : (modes.find(m => m !== 'off') || 'auto')}" aria-pressed="${onn}" aria-label="${onn ? 'Spegni' : 'Accendi'}"><i></i></button></div>
       ${onn ? `<div class="row" style="gap:12px;justify-content:center"><button class="rnd" data-act="ctemp" data-id="${esc(x.entity)}" data-dir="-1" aria-label="Abbassa">−</button><span class="disp" style="font-size:44px;line-height:1;min-width:120px;text-align:center">${a.temperature !== undefined ? nf(a.temperature, (a.target_temp_step || 1) < 1 ? 1 : 0) + '°' : '–'}</span><button class="rnd" data-act="ctemp" data-id="${esc(x.entity)}" data-dir="1" aria-label="Alza">+</button></div>
@@ -1975,6 +2110,8 @@ class IsolaCard extends HTMLElement {
     if (S.k === 'dev') return this._renderDevPage(now);
     if (S.k === 'clima') return this._renderClimaPage(now);
     if (S.k === 'consumi') return this._renderConsumi(now);
+    if (S.k === 'diario') return this._renderDiario(now);
+    if (S.k === 'calendario') return this._renderCalendario(now);
   }
 
   // ---------------------------------------------------------------- pagina dispositivo
@@ -2192,6 +2329,7 @@ class IsolaCard extends HTMLElement {
     // scene, script, automazioni
     const sc = c.scenes;
     this._set('y_scenes', `<section class="rsec"><span class="lab">Scene</span><div class="grid2">${[['morning', 'sun'], ['night', 'moon'], ['out', 'exit'], ['home', 'enter']].filter(([k]) => sc[k]).map(([k, ic]) => `<button class="scene" style="height:56px" data-act="scene" data-k="${k}">${svg(ic, 18)}${esc(sc[k].name)}</button>`).join('')}</div></section>`);
+    this._set('y_learn', this._learnList());
     const scr = ids.filter(id => id.startsWith('script.')).sort((a, b) => this._fname(a).localeCompare(this._fname(b), 'it'));
     const sRows = scr.map(id => this._ctrl(id));
     this._set('y_scripts', sRows.length ? `<section class="card" style="gap:0;padding:4px 18px"><span class="lab" style="padding:12px 0 4px">Script</span>${(exp('scr') ? sRows : sRows.slice(0, 6)).join('')}${more('scr', sRows.length, 6)}</section>` : '');
@@ -2285,15 +2423,9 @@ class IsolaCard extends HTMLElement {
     if (upd) items.push({ sev: 1, icon: 'update', t: upd === 1 ? '1 aggiornamento disponibile' : upd + ' aggiornamenti disponibili', s: 'Impostazioni › Aggiornamenti', go: '/config/updates' });
     const bk = Object.keys(S).find(id => /^sensor\.backup_last_successful_automatic_backup/.test(id));
     if (bk && !BAD.test(S[bk].state)) { const days = (now - new Date(S[bk].state).getTime()) / 86400000; if (days > 3) items.push({ sev: 2, icon: 'backup', t: 'Backup automatico in ritardo', s: 'Ultimo ' + Math.floor(days) + ' giorni fa', go: '/config/backup' }); }
-    // raccolta differenziata (se configurata: waste: { today, tomorrow, from, to })
-    const W = c.waste;
-    if (W && (W.today || W.tomorrow)) {
-      const ro = S[W.today], rd = S[W.tomorrow], h = now.getHours() + now.getMinutes() / 60, f0 = W.from ?? 17, f1 = W.to ?? 20;
-      const ok = x => x && x.state && !/^(unknown|unavailable|nessuna|none)$/i.test(x.state);
-      if (ok(ro) && h >= 12 && h < f1) items.push({ sev: h >= f0 ? 2 : 1, icon: 'bin', t: 'Raccolta oggi: ' + ro.state.toLowerCase(), s: h >= f0 ? `Esponi entro le ${f1}:00` : `Da esporre dalle ${f0} alle ${f1}` });
-      else if (ok(rd) && h >= f1) items.push({ sev: 1, icon: 'bin', t: 'Domani: ' + rd.state.toLowerCase(), s: `Da esporre domani dalle ${f0} alle ${f1}` });
-    }
+    // raccolta differenziata: è nel calendario della Home (waste: { today, tomorrow, from, to })
     items.sort((a, b) => b.sev - a.sev);
+    this._alItems = items;
     if (!items.length) return '';
     const COL = { 3: '#FF7A66', 2: '#E8935C', 1: '#8EC5F2' };
     const show = this._alAll ? items : items.slice(0, 3);
@@ -2302,6 +2434,810 @@ class IsolaCard extends HTMLElement {
         return `<div class="alert${i.sev >= 3 ? ' hot' : ''}" style="--ac:${col}"${i.go ? ` data-act="go" data-to="${i.go}" role="button"` : ''}><span class="ai">${svg(i.icon, 20)}</span><span style="flex:1;min-width:0"><b>${esc(i.t)}</b><small>${esc(i.s)}</small></span>${i.act ? `<button class="pbtn${armed ? ' warn' : ''}" data-act="alrun" data-id="${i.act}">${armed ? 'Conferma' : esc(i.actLabel)}</button>` : ''}</div>`; }).join('')}
       ${items.length > 3 ? `<button class="more" data-act="alall">${this._alAll ? 'Mostra meno' : (items.length - 3 === 1 ? 'Mostra l’altro' : `Mostra altri ${items.length - 3}`)}</button>` : ''}
     </div>`;
+  }
+
+
+  // ================================================================ 1.0 · nomi (Home Assistant 2026: dispositivo + entità)
+  _regName(id) {
+    const h = this._hass, e = h && h.entities && h.entities[id], d = e && e.device_id && h.devices ? h.devices[e.device_id] : null;
+    const dn = d ? (d.name_by_user || d.name) : '', en = e ? e.name : '';
+    if (dn && en) return en.toLowerCase().startsWith(dn.toLowerCase()) ? en : dn + ' ' + en;
+    return en || dn || '';
+  }
+
+  // ================================================================ 1.0 · la casa che impara
+  // Guarda il registro degli ultimi giorni (solo i comandi dati da voi, non dalle automazioni),
+  // trova le abitudini ricorrenti e al momento giusto propone l'azione. Non crea automazioni.
+  _learnIds() {
+    const c = this._config, S = this._hass.states, ids = new Set();
+    (c.rooms || []).forEach(r => (r.items || []).forEach(x => { if ((x.type === 'light' || x.type === 'switch') && x.entity) ids.add(x.entity); }));
+    (c.climates || []).forEach(x => { if (x.entity) ids.add(x.entity); });
+    (c.devices || []).forEach(d => { if (d.type === 'vacuum' && d.entity) ids.add(d.entity); });
+    if (c.alarm) ids.add(c.alarm);
+    if (c.lock) ids.add(c.lock);
+    Object.values(c.scenes || {}).forEach(s => { if (s && s.target && /^(script|scene)\./.test(s.target)) ids.add(s.target); });
+    ((c.learn && c.learn.entities) || []).forEach(id => ids.add(id));
+    return [...ids].filter(id => S[id]).sort();
+  }
+  _learnTarget(id, st) {
+    const d = id.split('.')[0];
+    if (st === undefined || BAD.test(st)) return null;
+    if (d === 'light' || d === 'switch' || d === 'input_boolean' || d === 'fan') return st === 'on' || st === 'off' ? st : null;
+    if (d === 'climate') return st === 'off' ? 'off' : 'on';
+    if (d === 'script') return st === 'on' ? 'on' : null;
+    if (d === 'scene') return 'run';
+    if (d === 'vacuum') return st === 'cleaning' ? 'cleaning' : null;
+    if (d === 'alarm_control_panel') return /^armed_(home|away|night)$/.test(st) ? st : null;
+    if (d === 'lock') return st === 'locked' ? 'locked' : null;
+    return null;
+  }
+  _learnMine(rows, t0, t1) {
+    const days = Math.max(1, Math.round((t1 - t0) / 86400000)), G = {};
+    const dk = d => d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+    for (const r of rows) {
+      if (!r || !r.entity_id || r.state === undefined || !r.when) continue;
+      const dom = r.entity_id.split('.')[0];
+      // le azioni delle automazioni (e quelle fatte da uno script) non sono abitudini vostre
+      if (r.context_event_type === 'automation_triggered' || r.context_domain === 'automation' || /^automation\./.test(r.context_entity_id || '') || (r.context_domain === 'script' && dom !== 'script')) continue;
+      const tg = this._learnTarget(r.entity_id, r.state); if (!tg) continue;
+      const d = new Date(r.when * 1000), k = r.entity_id + '|' + tg;
+      (G[k] = G[k] || []).push({ day: dk(d), m: d.getHours() * 60 + d.getMinutes(), wd: d.getDay() >= 1 && d.getDay() <= 5 });
+    }
+    const need = Math.max(4, Math.ceil(days * 0.28)), out = [];
+    for (const [k, ev0] of Object.entries(G)) {
+      let ev = ev0.slice();
+      for (let pass = 0; pass < 2 && ev.length >= need; pass++) {
+        let best = null;
+        for (let c0 = 0; c0 < 1440; c0 += 10) {
+          const inn = ev.filter(e => { const dd = Math.abs(e.m - c0); return Math.min(dd, 1440 - dd) <= 35; });
+          const nd = new Set(inn.map(e => e.day)).size;
+          if (!best || nd > best.nd) best = { c0, nd, inn };
+        }
+        if (!best || best.nd < need) break;
+        const rel = best.inn.map(e => ((e.m - best.c0 + 2160) % 1440) - 720).sort((a, b) => a - b);
+        const med = (Math.round(best.c0 + rel[Math.floor(rel.length / 2)]) + 1440) % 1440;
+        const wdShare = best.inn.filter(e => e.wd).length / best.inn.length;
+        const [ent, tg] = k.split('|');
+        out.push({ k: ent + '|' + tg + '|' + Math.round(med / 60), ent, tg, min: med, n: best.nd, of: days, wk: wdShare >= 0.85 ? 'feriali' : wdShare <= 0.15 ? 'festivi' : '' });
+        const used = new Set(best.inn); ev = ev.filter(e => !used.has(e));
+      }
+    }
+    return out.sort((a, b) => a.min - b.min);
+  }
+  _learnLoad() {
+    const L = this._learn || (this._learn = { habits: null, ts: 0 });
+    if (L.busy || !this._hass || !this._hass.callWS || this._config.learn === false) return L;
+    const ids = this._learnIds(), key = ids.join(',');
+    if (!L.ts) { try { const sv = JSON.parse(localStorage.getItem('isola_learn_v1') || 'null'); if (sv && sv.habits && sv.key === key) Object.assign(L, sv); } catch (e) { } }
+    if (!L.offLoaded) {
+      L.offLoaded = true;
+      this._hass.callWS({ type: 'frontend/get_user_data', key: 'isola_learn_off' }).then(r => {
+        const v = r && Array.isArray(r.value) ? r.value : []; if (!v.length) return;
+        const cur = this._learnOff(); const all = [...new Set([...cur, ...v])];
+        try { localStorage.setItem('isola_learn_off', JSON.stringify(all)); } catch (e) { } this._schedule();
+      }).catch(() => { });
+    }
+    if (L.ts && L.key === key && Date.now() - L.ts < 6 * 3600000) return L;
+    if (!ids.length) return L;
+    L.busy = true;
+    const days = +((this._config.learn && this._config.learn.days) || 28), t1 = new Date(), t0 = new Date(t1.getTime() - days * 86400000);
+    this._hass.callWS({ type: 'logbook/get_events', start_time: t0.toISOString(), end_time: t1.toISOString(), entity_ids: ids })
+      .then(rows => {
+        L.habits = this._learnMine(Array.isArray(rows) ? rows : [], t0, t1); L.ts = Date.now(); L.key = key; L.days = days;
+        try { localStorage.setItem('isola_learn_v1', JSON.stringify({ habits: L.habits, ts: L.ts, key, days })); } catch (e) { }
+      })
+      .catch(e => { console.warn('isola: abitudini', e); L.ts = Date.now() - 5.5 * 3600000; L.key = key; })
+      .finally(() => { L.busy = false; this._cache.learn = null; this._schedule(); });
+    return L;
+  }
+  _learnOff() { try { return JSON.parse(localStorage.getItem('isola_learn_off') || '[]') || []; } catch (e) { return []; } }
+  _learnSetOff(k, on) {
+    const cur = this._learnOff().filter(x => x !== k); if (on) cur.push(k);
+    try { localStorage.setItem('isola_learn_off', JSON.stringify(cur)); } catch (e) { }
+    if (this._hass.callWS) this._hass.callWS({ type: 'frontend/set_user_data', key: 'isola_learn_off', value: cur }).catch(() => { });
+  }
+  _learnSnoozed() {
+    try { const v = JSON.parse(localStorage.getItem('isola_learn_snooze') || 'null'); return v && v.day === new Date().toDateString() ? v.keys : []; } catch (e) { return []; }
+  }
+  _learnSnooze(k) {
+    const keys = [...this._learnSnoozed(), k];
+    try { localStorage.setItem('isola_learn_snooze', JSON.stringify({ day: new Date().toDateString(), keys })); } catch (e) { }
+  }
+  _learnName(id) {
+    const c = this._config;
+    for (const r of c.rooms || []) for (const x of r.items || []) if (x.entity === id && x.name) return x.name;
+    const cl = (c.climates || []).find(x => x.entity === id); if (cl) return 'clima ' + cl.name.toLowerCase();
+    const dv = (c.devices || []).find(x => x.entity === id); if (dv) return dv.name;
+    const sc = Object.values(c.scenes || {}).find(s => s && s.target === id); if (sc) return sc.name;
+    if (id === c.lock) return 'il portone';
+    return this._fname(id);
+  }
+  _learnNow(now) {
+    const L = this._learn; if (!L || !L.habits || this._config.learn === false) return [];
+    if (this._st('input_boolean.casa_in_vacanza')?.state === 'on') return [];   // in vacanza le abitudini non valgono
+    const guests = this._st('input_boolean.ospiti_in_casa')?.state === 'on';
+    const off = this._learnOff(), sn = this._learnSnoozed(), m = now.getHours() * 60 + now.getMinutes(), wd = now.getDay() >= 1 && now.getDay() <= 5;
+    const home = (this._config.people || []).some(p => this._st(p.entity)?.state === 'home');
+    const out = [];
+    for (const h of L.habits) {
+      if (off.includes(h.k) || sn.includes(h.k)) continue;
+      if ((h.wk === 'feriali' && !wd) || (h.wk === 'festivi' && wd)) continue;
+      const s = this._st(h.ent); if (!s || BAD.test(s.state)) continue;
+      let d = m - h.min; if (d < -720) d += 1440; if (d > 720) d -= 1440;
+      const dom = h.ent.split('.')[0], guard = dom === 'alarm_control_panel' || dom === 'lock';
+      if (d < -15 || d > (guard ? 150 : 45)) continue;
+      // già fatto?
+      if (dom !== 'scene' && this._learnTarget(h.ent, s.state) === h.tg) continue;
+      if ((dom === 'script' || dom === 'scene') && (now - new Date(s.last_changed)) < (d + 90) * 60000) continue;
+      if (dom === 'alarm_control_panel' && s.state !== 'disarmed') continue;
+      if (h.tg !== 'off' && dom !== 'vacuum' && dom !== 'lock' && h.tg !== 'armed_away' && !home) continue;
+      if (guests && dom === 'vacuum') continue;   // con gli ospiti niente robot
+      out.push({ ...h, late: d > 45 });
+    }
+    return out.slice(0, 2);
+  }
+  _hm(min) { return String(Math.floor(min / 60)).padStart(2, '0') + ':' + String(min % 60).padStart(2, '0'); }
+  _learnPhrase(h) {
+    const dom = h.ent.split('.')[0], nm = this._learnName(h.ent);
+    if (dom === 'alarm_control_panel') return { what: { armed_night: 'inserisci l’allarme per la notte', armed_home: 'inserisci l’allarme in casa', armed_away: 'inserisci l’allarme' }[h.tg], btn: 'Inserisci', done: 'l’allarme è già inserito' };
+    if (dom === 'lock') return { what: 'chiudi a chiave ' + nm.toLowerCase(), btn: 'Chiudi', done: nm.toLowerCase() + ' è già chiuso a chiave' };
+    if (dom === 'vacuum') return { what: 'fai partire ' + nm, btn: 'Avvia ' + nm };
+    if (dom === 'script' || dom === 'scene') return { what: 'avvii «' + nm + '»', btn: 'Avvia' };
+    return { what: (h.tg === 'off' ? 'spegni ' : 'accendi ') + (dom === 'climate' ? nm : nm.charAt(0).toLowerCase() + nm.slice(1)), btn: h.tg === 'off' ? 'Spegni' : 'Accendi' };
+  }
+  _learnHtml(now) {
+    const L = this._learn, list = this._learnNow(now); if (!list.length) return '';
+    return `<div style="display:flex;flex-direction:column;gap:10px">${list.map(h => {
+      const p = this._learnPhrase(h), when = this._hm(h.min), never = this._armed === 'ln:' + h.k;
+      const txt = h.late ? `Di solito alle ${when} ${p.done || 'è già fatto'}.` : `Di solito verso le ${when} ${p.what}.`;
+      return `<section class="learn"><span class="li">${svg('spark', 20, 2)}</span><div class="lt2"><small>La casa ha imparato · ${h.n} giorni su ${h.of}${h.wk ? ' · ' + h.wk : ''}</small><b>${esc(cap(txt))}</b>
+        <div class="lb"><button class="pri" data-act="learnyes" data-k="${esc(h.k)}">${esc(p.btn)}</button><button data-act="learnno" data-k="${esc(h.k)}">Non ora</button><button class="${never ? 'warn' : ''}" data-act="learnnever" data-k="${esc(h.k)}">${never ? 'Sicuro? Tocca ancora' : 'Non chiederlo più'}</button></div></div></section>`;
+    }).join('')}</div>`;
+  }
+  _learnDo(k) {
+    const h = ((this._learn && this._learn.habits) || []).find(x => x.k === k); if (!h) return;
+    const dom = h.ent.split('.')[0], e = { entity_id: h.ent };
+    if (dom === 'alarm_control_panel') this._alarm({ armed_night: 'arm_night', armed_home: 'arm_home', armed_away: 'arm_away' }[h.tg]);
+    else if (dom === 'lock') this._svc('lock', 'lock', e, 'Chiuso');
+    else if (dom === 'vacuum') this._svc('vacuum', 'start', e, 'Parte');
+    else if (dom === 'script') this._svc('script', 'turn_on', e, 'Avviato');
+    else if (dom === 'scene') this._svc('scene', 'turn_on', e, 'Fatto');
+    else if (dom === 'climate') this._svc('climate', h.tg === 'on' ? 'turn_on' : 'turn_off', e, 'Fatto');
+    else if (dom === 'light') this._svc('light', h.tg === 'on' ? 'turn_on' : 'turn_off', e, 'Fatto');
+    else this._svc('homeassistant', h.tg === 'on' ? 'turn_on' : 'turn_off', e, 'Fatto');
+    this._learnSnooze(k);
+  }
+  // Sistema: cosa ha imparato la casa (si possono spegnere e riaccendere una per una)
+  _learnList() {
+    if (this._config.learn === false) return '';
+    const L = this._learn || {}, off = this._learnOff();
+    const head = `<span class="lab" style="padding:12px 0 4px">La casa ha imparato</span>`;
+    if (!L.habits) return `<section class="card" style="gap:0;padding:4px 18px">${head}<p class="mut" style="margin:6px 0 12px;font-size:13px">${L.busy ? 'Sto guardando le ultime settimane…' : 'Tra poco: sto per guardare le ultime settimane.'}</p></section>`;
+    const rows = L.habits.map(h => {
+      const p = this._learnPhrase(h), on = !off.includes(h.k);
+      return `<div class="mrow" style="cursor:default"><i class="${on ? 'hot' : ''}"></i><span class="grow"><span style="font-size:14px">${esc(this._hm(h.min))} · ${esc(cap(p.what))}</span><small style="display:block;color:var(--mut)">${h.n} giorni su ${h.of}${h.wk ? ' · ' + h.wk : ''}</small></span><button class="mini1${on ? ' on' : ''}" data-act="learntog" data-k="${esc(h.k)}">${on ? 'Propongo' : 'Spento'}</button></div>`;
+    }).join('');
+    return `<section class="card" style="gap:0;padding:4px 18px">${head}${rows || '<p class="mut" style="margin:6px 0 10px;font-size:13px">Ancora nessuna abitudine chiara: servono almeno 4 giorni simili.</p>'}
+      <span class="foot" style="padding:8px 0 12px">Guardo gli ultimi ${L.days || 28} giorni: solo quello che fate voi (app, interruttori, voce), non le automazioni. Non creo automazioni: propongo e decidete voi.</span></section>`;
+  }
+
+  // ================================================================ 1.0 · la Home che cambia con il momento
+  _ctxMode(now) {
+    const c = this._config, hr = now.getHours() + now.getMinutes() / 60, st = this._sunTimes();
+    const P = (c.people || []).map(p => this._st(p.entity)).filter(Boolean), home = P.filter(s => s.state === 'home');
+    const left = P.some(s => { const dt = now - new Date(s.last_changed); return s.state !== 'home' && dt >= 0 && dt < 30 * 60000; });
+    if ((P.length && !home.length) || left) return 'uscita';
+    if (hr >= 5 && hr < 10.5) return 'mattino';
+    if (hr >= 23.5 || hr < 5) return 'notte';
+    const dusk = st && st.set && st.set > now ? st.set.getHours() + st.set.getMinutes() / 60 - 0.5 : 17.5;
+    if (hr >= Math.min(dusk, 19.5) || this._isNight()) return 'sera';
+    return 'giorno';
+  }
+  // 1.1 · la Home ha un ordine fisso: cambia solo il contenuto della scheda "Adesso"
+  _ctxApply(mode) {
+    this._ctxM = mode;
+    const O = HOME_ORDER;
+    this._root.querySelectorAll('[data-page="casa"] > [data-o]').forEach(el => { const i = O.indexOf(el.dataset.o); el.style.order = i < 0 ? 50 : i + 1; });
+    const pg = this._root.querySelector('[data-page="casa"]'); if (pg) pg.classList.toggle('xopen', !!this._stripOpen);
+  }
+  // persone + meteo in una riga; al tocco si aprono le schede complete
+  _personMini(p, now) {
+    const s = this._st(p.entity); if (!s) return '';
+    const st = s.state, home = st === 'home';
+    let where = home ? 'A casa' : st === 'not_home' ? 'Fuori casa' : /lavoro|work|ufficio|office/i.test(st) ? 'Al lavoro' : cap(st);
+    const icon = home ? 'home' : st === 'not_home' ? 'away' : /lavoro|work|ufficio|office/i.test(st) ? 'work' : 'pin';
+    const pic = s.attributes.entity_picture, name = p.name || s.attributes.friendly_name || '';
+    return `<span class="sc"><span class="av${home ? '' : ' out'}"><span class="ring"><span class="pic disp" style="${pic ? `background-image:url('${esc(pic)}')` : ''}">${pic ? '' : esc(name.charAt(0))}</span></span><span class="badge">${svg(icon, 12, 2.6)}</span></span><span class="pinfo"><span class="pname">${esc(name.split(' ')[0])}</span><span class="pwhere">${esc(where)}</span></span></span>`;
+  }
+  _stripHtml(now, night) {
+    const c = this._config, me = this._hass.user && this._hass.user.id;
+    const ppl = c.people.slice().sort((a, b) => (this._st(b.entity)?.attributes?.user_id === me) - (this._st(a.entity)?.attributes?.user_id === me)).slice(0, 2);
+    const P = ppl.map(p => this._personMini(p, now)).filter(Boolean);
+    const w = this._st(c.weather); let wx = '';
+    if (w) {
+      const d0 = (this._fc_daily || []).find(f => sameDay(new Date(f.datetime), now));
+      wx = `<span class="sc wxs">${this._wxIcon(night && w.state === 'sunny' ? 'clear-night' : w.state, 24, 1.8)}<span class="pinfo"><span class="pname">${nf(w.attributes.temperature)}°</span><span class="pwhere">${d0 && d0.templow !== undefined ? `${nf(d0.templow)}° – ${nf(d0.temperature)}°` : esc((WX[w.state] || [cap(w.state)])[0])}</span></span></span>`;
+    }
+    if (!P.length && !wx) return '';
+    return `<button class="strip${this._stripOpen ? ' on' : ''}" data-act="stripx" aria-expanded="${!!this._stripOpen}" aria-label="Persone e meteo">${P.join('')}${wx}<span class="sx">${svg('chev', 16, 2.2, `style="transform:rotate(${this._stripOpen ? -90 : 90}deg)"`)}</span></button>`;
+  }
+  // diario: in Home una riga, la scheda completa è in Sicurezza
+  _dlineHtml(now) {
+    const D = this._diaryItems(); if (!D.items.length) return '';
+    const L = D.items.slice(0, 2), hot = L.some(i => i.hot);
+    return `<button class="dline" data-act="diary"><span class="di${hot ? ' hot' : ''}">${svg(L[0].ic, 16, 2)}</span><span class="grow"><span><b>Oggi:</b> ${L.map(i => `${esc(i.t.charAt(0).toLowerCase() + i.t.slice(1))} ${hhmm(new Date(i.when * 1000))}`).join(' · ')}</span></span><span class="link">Diario</span></button>`;
+  }
+  // calendario dentro "Adesso": il prossimo impegno (la sera anche domani)
+  _calNow(mode, now) {
+    const e = this._calFetch(8); if (!e || !e.data) return null;
+    const d0 = new Date(now); d0.setHours(0, 0, 0, 0); const d1 = new Date(d0.getTime() + 86400000), d2 = new Date(d1.getTime() + 86400000);
+    const today = mode === 'notte' && now.getHours() >= 21 ? [] : e.data.filter(x => x.start < d1 && x.end > now);
+    const tom = e.data.filter(x => x.start < d2 && x.end > d1);
+    const pick = L => L.filter(x => !x.all && x.end > now)[0] || L[0];
+    const lab = f => f.all ? f.title : f.start <= now ? `${f.title} · adesso` : `${f.title} alle ${hhmm(f.start)}`;
+    const more = n => n === 1 ? 'e un altro impegno' : `e altri ${n} impegni`;
+    const late = mode === 'sera' || mode === 'notte';
+    if (today.length) {
+      const f = pick(today);
+      const s = [f.where, today.length > 1 ? more(today.length - 1) : '', late && tom.length ? 'domani: ' + lab(pick(tom)) : ''].filter(Boolean).join(' · ');
+      return { t: (f.all ? 'Oggi: ' : '') + lab(f), s, sub: !f.all && f.start > now ? lab(f) : '' };
+    }
+    if (tom.length) { const f = pick(tom); return { t: 'Domani: ' + lab(f), s: tom.length > 1 ? more(tom.length - 1) : (f.where || '') }; }
+    return null;
+  }
+  // 1.1.2 · una scena è stata avviata stasera? (dalle 18; dopo mezzanotte vale la sera prima)
+  _sceneRan(k, now) {
+    const s = (this._config.scenes || {})[k]; if (!s || !s.target) return null;
+    const st = this._st(s.target); if (!st) return null;
+    const t = Date.parse(s.target.startsWith('scene.') ? st.state : st.attributes.last_triggered); if (isNaN(t)) return null;
+    const from = new Date(now); if (from.getHours() < 12) from.setDate(from.getDate() - 1); from.setHours(18, 0, 0, 0);
+    return t >= from.getTime() && t <= now.getTime() + 60000 ? new Date(t) : null;
+  }
+  // raccolta differenziata nel calendario (se configurata: waste: { today: sensor.xxx, tomorrow: sensor.yyy, from: 17, to: 20 })
+  _racc(now) {
+    const W = this._config.waste, S = this._hass.states;
+    const val = id => { const s = id && S[id]; return s && s.state && !/^(unknown|unavailable|nessuna|none|-)$/i.test(s.state) ? s.state : null; };
+    return { oggi: W ? val(W.today) : null, domani: W ? val(W.tomorrow) : null, from: (W && W.from) ?? 17, to: (W && W.to) ?? 20 };
+  }
+  // 1.1.1 · il calendario vero in Home: oggi e domani, raccolta compresa
+  _calHomeHtml(now) {
+    const e = this._calFetch(3), R = this._racc(now), h = now.getHours() + now.getMinutes() / 60;
+    const d0 = new Date(now); d0.setHours(0, 0, 0, 0); const d1 = new Date(d0.getTime() + 86400000), d2 = new Date(d1.getTime() + 86400000);
+    const ev = e && e.data ? e.data : [];
+    const day = (from, to, rac, isToday) => {
+      const L = ev.filter(x => x.start < to && x.end > (isToday ? now : from)).map(x => ({ k: x.all ? from.getTime() : x.start.getTime(), html: this._calRow(x, now, false) }));
+      if (rac && (!isToday || h < R.to)) {
+        const live = isToday && h >= R.from;
+        L.push({ k: from.getTime() + 17 * 3600000, html: `<div class="crow2${live ? ' live' : ''}"><i style="background:var(--leaf)"></i><span class="grow"><b>Raccolta: ${esc(rac.toLowerCase())}</b><small>${live ? `esponi entro le ${R.to}:00` : `esponi dalle ${R.from}:00 alle ${R.to}:00`}</small></span></div>` });
+      }
+      return L.sort((a, b) => a.k - b.k).map(x => x.html).join('');
+    };
+    const dn = d => cap(d.toLocaleDateString(i18nLoc(), { weekday: 'long', day: 'numeric', ...(i18nLoc() === 'it-IT' ? {} : { month: 'short' }) }));
+    const T = day(d0, d1, R.oggi, true), D = day(d1, d2, R.domani, false);
+    if (!e && !T && !D) return '';
+    const wait = e && !e.data ? `<p class="cnone">${e.err ? 'Il calendario non risponde.' : 'Leggo il calendario…'}</p>` : '';
+    return `<section class="card cal" aria-label="Calendario"><div class="row sp"><span class="lab">Calendario</span>${e ? '<button class="link" data-act="calopen">Prossimi 7 giorni</button>' : ''}</div>
+      <span class="cday">Oggi · ${esc(dn(d0))}</span>${T || (wait || '<p class="cnone">Niente in programma.</p>')}
+      <span class="cday">Domani · ${esc(dn(d1))}</span>${D || (wait ? '' : '<p class="cnone">Niente in programma.</p>')}</section>`;
+  }
+  // 1.1.1 · cose da sapere: solo se sono vere E valgono adesso (es. il portone aperto conta solo se in casa non c'è nessuno o di notte)
+  _attn(mode, now) {
+    const c = this._config, rows = [];
+    const row = (ic, t, s, btn, ok, pri = 5, sh = '') => rows.push({ ic, t, s, btn, ok, pri, sh });
+    const B = (act, label, attrs = '') => ({ act, label, attrs });
+    const P = (c.people || []).map(p => this._st(p.entity)).filter(Boolean), someone = P.some(s => s.state === 'home'), nobody = P.length > 0 && !someone;
+    const openW = (c.windows || []).filter(w => this._st(w.entity)?.state === 'on');
+    const al = this._st(c.alarm)?.state || '', lk = this._st(c.lock)?.state || '', armed = /^armed/.test(al);
+    const lockOpen = lk && lk !== 'locked', lockB = B('lock', 'Chiudi', `data-k="lock" data-id="${esc(c.lock)}"`);
+    const winT = () => openW.length === 1 ? `Finestra ${openW[0].name.toLowerCase()} aperta` : `${openW.length} finestre aperte`;
+    if (nobody) {
+      const lightsOn = [...new Set((c.rooms || []).flatMap(r => this._roomParts(r).lights))].filter(id => this._st(id)?.state === 'on');
+      if (openW.length) row('window', winT(), 'Non c’è nessuno in casa', null, false, 0);
+      if (lockOpen) row('lock', 'Portone non chiuso a chiave', 'Non c’è nessuno in casa', lockB, false, 0);
+      if (al && !armed) row('sicurezza', 'Allarme disinserito', 'Non c’è nessuno in casa', B('alarm', 'Inserisci', 'data-k="arm_away"'), false, 0);
+      if (lightsOn.length) row('bulb', `${lightsOn.length} ${lightsOn.length === 1 ? 'luce accesa' : 'luci accese'}`, 'Non c’è nessuno in casa', B('lightsoff', 'Spegni'), false, 1);
+      if (!openW.length && !lockOpen && (!al || armed)) row('check', 'Casa chiusa', [openW.length ? '' : 'finestre chiuse', lk ? 'portone a chiave' : '', armed ? 'allarme inserito' : ''].filter(Boolean).join(' · '), null, true, 3);
+    } else if (someone) {
+      // la mattina, con qualcuno in casa, l'allarme ancora inserito
+      if (mode === 'mattino' && armed) row('shieldoff', al === 'armed_night' ? 'Allarme notte ancora inserito' : 'Allarme ancora inserito', '', B('alarm', 'Disinserisci', 'data-k="disarm"'), undefined, 1);
+      // di notte: portone e finestre
+      if (mode === 'notte') {
+        if (lockOpen) row('lock', 'Portone non chiuso a chiave', 'È notte', lockB, false, 0);
+        if (openW.length) row('window', winT(), 'È notte', null, false, 1);
+      }
+    }
+    // avvisi veri (manutenzione, dispositivi non disponibili, batterie, aggiornamenti…)
+    (this._alItems || []).forEach(i => {
+      const ar = i.act && this._armed === 'al:' + i.act;
+      row(i.icon, i.t, i.s, i.act ? B('alrun', ar ? 'Conferma' : i.actLabel, `data-id="${i.act}"`) : i.go ? B('go', 'Apri', `data-to="${i.go}"`) : null, i.sev >= 3 ? false : undefined, i.sev >= 3 ? 2 : i.sev === 2 ? 5 : 8);
+    });
+    return rows.sort((a, b) => a.pri - b.pri);
+  }
+  // 1.1.1 · in fondo alla Home: proposte, cose da sapere e cosa è successo oggi
+  _dcardHtml(mode, now) {
+    const rows = this._attn(mode, now), learn = this._learnH || '', D = this._diaryItems(), evs = D.items.slice(0, 3);
+    if (!rows.length && !learn && !evs.length) return '';
+    const nobody = rows.some(r => r.s === 'Non c’è nessuno in casa' || r.t === 'Casa chiusa');
+    const MAX = nobody ? rows.filter(r => r.pri <= 1.5).length || 3 : 3, show = this._nowAll ? rows : rows.slice(0, MAX), rest = rows.slice(MAX);
+    const html = r => `<div class="crow${r.ok === true ? ' ok' : r.ok === false ? ' ko' : ''}"><span class="ci">${svg(r.ok === true ? 'check' : r.ic, 18, 2)}</span><span class="grow"><b>${esc(r.t)}</b>${r.s ? `<small>${esc(r.s)}</small>` : ''}</span>${r.btn ? `<button class="pbtn${r.btn.act === 'go' ? ' ghost' : ''}${r.btn.label === 'Conferma' ? ' warn' : ''}" data-act="${r.btn.act}" ${r.btn.attrs}>${esc(r.btn.label)}</button>` : ''}</div>`;
+    const moreLab = rest.length ? (this._nowAll ? 'Meno' : `Altri ${rest.length}`) : '';
+    return `<section class="card ctx dcard" aria-label="Oggi in casa"><div class="row sp"><span class="lab">Oggi in casa</span><button class="link" data-act="diary">Tutto il diario</button></div>${learn}${show.map(html).join('')}${rest.length ? `<button class="nmore" data-act="nowall">${esc(moreLab)}${svg('chev', 14, 2.2, `style="transform:rotate(${this._nowAll ? -90 : 90}deg)"`)}</button>` : ''}
+      ${evs.length ? `${rows.length || learn ? '<span class="cday">Successo oggi</span>' : ''}${evs.map(i => `<div class="drow${i.hot ? ' hot' : ''}"><span class="di">${svg(i.ic, 16, 2)}</span><span class="grow">${esc(i.t)}</span><small>${hhmm(new Date(i.when * 1000))}</small></div>`).join('')}` : ''}</section>`;
+  }
+  // energia: il momento migliore per gli elettrodomestici (prima era una riga di "Adesso")
+  _bestHtml(now) {
+    const plan = this._planData(now); if (!plan || !plan.best || !plan.best.length) return '';
+    const L = plan.best.slice(0, 2), all = L.every(b => b.now);
+    const fr = f => /^domani /.test(f) ? 'domani dalle ' + f.slice(7) : 'dalle ' + f, same = L.every(b => !b.now && b.from === L[0].from);
+    const names = L.map((b, i) => i ? b.name.toLowerCase() : b.name).join(' e ');
+    const t = all ? `${names}: adesso è il momento` : same ? `${names}: meglio ${fr(L[0].from)}` : L.map(b => `${b.name} ${b.now ? 'adesso' : fr(b.from)}`).join(' · ');
+    return `<div class="sol"><span class="ti">${svg('sun', 18)}</span><span class="grow"><b>${esc(t)}</b><small>${esc(L.map(b => `${b.name} ${b.pct}% con il sole`).join(' · '))}</small></span></div>`;
+  }
+  _billDue(now) {
+    if (!this._st('input_number.bolletta_reale_totale')) return '';
+    const m = now.getMonth(); if (m % 2 !== 0 || now.getDate() > 28) return '';   // gen, mar, mag, lug, set, nov
+    const MESI = ['Nov–Dic', 'Gen–Feb', 'Mar–Apr', 'Mag–Giu', 'Lug–Ago', 'Set–Ott'], per = MESI[m / 2];
+    const sel = this._st('input_select.bolletta_periodo'), tot = this._n('input_number.bolletta_reale_totale', 0);
+    if (sel && sel.state === per && tot > 0) return '';
+    try { if (localStorage.getItem('isola_bill_' + per + now.getFullYear())) return ''; } catch (e) { }
+    return per;
+  }
+
+  // ================================================================ 1.0 · energia: il piano della giornata
+  _hist(ids, key, ttl) {
+    const day0 = new Date(); day0.setHours(0, 0, 0, 0);
+    return this._ws(key + ':' + day0.getDate(), ttl, () => ({ type: 'history/history_during_period', start_time: new Date(day0.getTime() - 86400000).toISOString(), end_time: new Date().toISOString(), entity_ids: ids, minimal_response: true, no_attributes: true }));
+  }
+  _planData(now) {
+    if (this._planC && now - this._planC.t < 60000) return this._planC.v;
+    const c = this._config, bt = this._batt(), capWh = (+c.battery_kwh || 7) * 1000, minS = +c.battery_min_soc || 5;
+    const day0 = new Date(now); day0.setHours(0, 0, 0, 0);
+    const H = i => new Date(day0.getTime() + i * 3600000);
+    // previsione oraria: Forecast.Solar del cruscotto Energia, oppure la curva disegnata dal totale previsto
+    const F = this._fcIds(), rawF = this._n(c.forecast_factor, 0), fac = rawF >= 20 ? Math.min(rawF, 150) / 100 : 1;
+    const fw = this._ws('plan:fc', 1800000, () => ({ type: 'energy/solar_forecast' }));
+    const fc = new Array(48).fill(0); let hasFc = false;
+    if (fw.data && typeof fw.data === 'object') for (const v of Object.values(fw.data)) for (const [t, wh] of Object.entries((v && v.wh_hours) || {})) {
+      const i = Math.floor((new Date(t) - day0) / 3600000); if (i >= 0 && i < 48 && +wh > 0) { fc[i] += +wh * fac; hasFc = true; }
+    }
+    if (!hasFc) {
+      const st = this._sunTimes(), tot = [F.today ? this._kwh(F.today) : NaN, F.tom ? this._kwh(F.tom) : NaN];
+      const r0 = st && st.rise ? st.rise.getHours() + st.rise.getMinutes() / 60 : 7, s0 = st && st.set ? ((st.set.getDate() !== now.getDate() && st.set > now) ? 17 : st.set.getHours() + st.set.getMinutes() / 60) : 17;
+      for (let d = 0; d < 2; d++) {
+        if (isNaN(tot[d])) continue; let sum = 0; const w = [];
+        for (let i = 0; i < 24; i++) { const x = (i + 0.5 - r0) / (s0 - r0); const v = x > 0 && x < 1 ? Math.pow(Math.sin(Math.PI * x), 1.6) : 0; w.push(v); sum += v; }
+        if (sum > 0) w.forEach((v, i) => { fc[d * 24 + i] = v / sum * tot[d] * 1000 * fac; });
+        hasFc = true;
+      }
+    }
+    // produzione reale e batteria da mezzanotte (media oraria)
+    const unit = id => (this._st(id)?.attributes?.unit_of_measurement || 'W');
+    const ids = [c.pv_power, bt.id, this._bIds && this._bIds.pw].filter(Boolean);
+    const hs = this._hist(ids, 'plan:h:' + ids.join(','), 300000), D = hs.data || {};
+    const series = (id, mul) => {
+      const out = new Array(24).fill(null), cnt = new Array(24).fill(0), arr = D[id] || [];
+      for (const p of arr) { const t = (p.lu || p.last_updated || 0) * (p.lu ? 1000 : 1); const v = parseFloat(p.s ?? p.state); if (isNaN(v)) continue; const i = Math.floor((t - day0) / 3600000); if (i < 0 || i > 23) continue; out[i] = (out[i] || 0) + v * mul; cnt[i]++; }
+      return out.map((v, i) => v === null ? null : v / cnt[i]);
+    };
+    const pvMul = unit(c.pv_power) === 'kW' ? 1000 : 1, actual = c.pv_power ? series(c.pv_power, pvMul) : [];
+    const socH = bt.id ? series(bt.id, 1) : [];
+    // consumo di base: quanto scarica la batteria quando il sole non c'è (ultime 24 ore), altrimenti 350 W
+    let base = +c.base_load_w || 0;
+    if (!base && this._bIds && this._bIds.pw && D[this._bIds.pw]) {
+      const mul = (unit(this._bIds.pw) === 'kW' ? 1000 : 1) * (c.battery_invert ? -1 : 1), pvA = D[c.pv_power] || [];
+      let s = 0, n = 0;
+      for (const p of D[this._bIds.pw]) { const v = parseFloat(p.s) * mul; if (isNaN(v) || v >= -30) continue; const t = p.lu * 1000; const q = pvA.filter(x => x.lu * 1000 <= t).pop(); if (q && parseFloat(q.s) * pvMul > 50) continue; s += -v; n++; }
+      if (n >= 6) base = s / n;
+    }
+    if (!base) base = 350;
+    base = Math.max(150, Math.min(1500, base));
+    // proiezione della batteria fino a domattina
+    const hNow = (now - day0) / 3600000, i0 = Math.floor(hNow);
+    let soc = isNaN(bt.soc) ? null : bt.soc, until = null, full = null;
+    const proj = new Array(48).fill(null);
+    if (soc !== null) {
+      let wh = soc / 100 * capWh; proj[i0] = soc;
+      for (let i = i0; i < Math.min(48, i0 + 30); i++) {
+        const frac = i === i0 ? 1 - (hNow - i0) : 1, net = (fc[i] - base) * frac, before = wh;
+        wh = Math.max(minS / 100 * capWh, Math.min(capWh, wh + net));
+        if (!until && net < 0 && wh <= minS / 100 * capWh + 1 && before > wh) { const f = (before - minS / 100 * capWh) / -net; until = H(i + (i === i0 ? hNow - i0 : 0) + f * frac); }
+        if (!full && net > 0 && wh >= capWh - 1 && before < capWh) full = H(i + 1);
+        proj[i + 1] = wh / capWh * 100;
+      }
+    }
+    const fmt = d => d ? (sameDay(d, now) ? hhmm(d) : hhmm(d) + ' di domani') : null;
+    // quando conviene: la finestra con più sole in eccesso per ogni elettrodomestico
+    const surplus = fc.map(v => Math.max(0, v - base));
+    const A = [{ name: 'Lavatrice', p: 900, h: 2 }, { name: 'Lavastoviglie', p: 450, h: 2 }];
+    if ((c.climates || []).length) A.push({ name: 'Clima', p: 700, h: 3 });
+    const best = [];
+    for (const a of A) {
+      let b = null;
+      for (let s = Math.max(i0, 6); s <= 22 - a.h + 24 && s < 47; s++) {
+        if (s >= 24 && b && b.pct >= 50) break;
+        let got = 0; for (let k = 0; k < a.h; k++) got += Math.min(surplus[s + k] || 0, a.p);
+        const pct = Math.round(got / (a.p * a.h) * 100);
+        if (!b || pct > b.pct + 2) b = { s, pct };
+      }
+      if (b && b.pct >= 30) best.push({ name: a.name, from: (b.s >= 24 ? 'domani ' : '') + String(b.s % 24).padStart(2, '0') + ':00', pct: b.pct, now: b.s === i0 });
+    }
+    const v = { fc, hasFc, actual, socH, proj, base, soc, until: soc !== null ? fmt(until) : null, full: soc !== null && soc < 99 ? fmt(full) : null, best, i0, hNow,
+      fcToday: fc.slice(0, 24).reduce((a, b) => a + b, 0), fcTom: fc.slice(24).reduce((a, b) => a + b, 0), loading: !hs.data };
+    if (hs.data && (fw.data || fw.err)) this._planC = { t: now.getTime(), v };
+    return v;
+  }
+  _planHtml(now) {
+    const P = this._planData(now), night = this._isNight();
+    if (!P.hasFc && P.soc === null) return '';
+    const W = 340, Hh = 140, x = h => 18 + h / 30 * (W - 36), maxW = Math.max(800, ...P.fc.slice(0, 30), ...P.actual.map(v => v || 0)) * 1.1, y = w => Hh - 18 - w / maxW * (Hh - 34), ys = s => Hh - 18 - s / 100 * (Hh - 34);
+    let area = `M${x(0)},${y(0)}`; for (let i = 0; i < 30; i++) area += ` L${x(i + 0.5)},${y(P.fc[i])}`; area += ` L${x(30)},${y(0)} Z`;
+    const act = P.actual.map((v, i) => v === null || i > P.i0 ? null : `${x(i + 0.5)},${y(Math.max(0, v))}`).filter(Boolean);
+    const socPast = P.socH.map((v, i) => v === null || i > P.i0 ? null : `${x(i + 0.5)},${ys(v)}`).filter(Boolean);
+    const socF = P.proj.map((v, i) => v === null || i > 30 ? null : `${x(i === P.i0 ? P.hNow : i)},${ys(v)}`).filter(Boolean);
+    const ticks = [0, 6, 12, 18, 24, 30].map(h => `<text x="${x(h)}" y="${Hh - 4}" text-anchor="middle">${h % 24}</text>`).join('');
+    const svgc = `<svg viewBox="0 0 ${W} ${Hh}" class="plan" role="img" aria-label="Sole previsto e batteria">
+      <line x1="${x(24)}" y1="8" x2="${x(24)}" y2="${Hh - 18}" class="mid"/>${ticks}
+      <path d="${area}" class="fca"/>${act.length > 1 ? `<polyline points="${act.join(' ')}" class="act"/>` : ''}
+      ${socPast.length > 1 ? `<polyline points="${socPast.join(' ')}" class="soc"/>` : ''}${socF.length > 1 ? `<polyline points="${socF.join(' ')}" class="soc f"/>` : ''}
+      <line x1="${x(P.hNow)}" y1="8" x2="${x(P.hNow)}" y2="${Hh - 18}" class="now"/></svg>`;
+    const lines = [];
+    if (P.hasFc) lines.push(`<div><span>Sole previsto</span><b>${nf(P.fcToday / 1000, 1)} kWh</b><small>domani ${nf(P.fcTom / 1000, 1)}</small></div>`);
+    if (P.soc !== null) lines.push(`<div><span>${night || P.until ? 'A batteria fino alle' : 'Batteria piena'}</span><b>${P.until ? esc(P.until.replace(' di domani', '')) : P.soc >= 99 ? 'già piena' : P.full ? esc(P.full.replace(' di domani', '')) : '—'}</b><small>${P.until && /domani/.test(P.until) ? 'di domani' : P.full && /domani/.test(P.full) ? 'domani' : 'stima'}</small></div>`);
+    lines.push(`<div><span>Casa a riposo</span><b>${nf(P.base)} W</b><small>stima</small></div>`);
+    const best = P.best.length ? `<div class="best"><span class="lab">Quando conviene</span>${P.best.map(b => `<div class="brow"><b>${esc(b.name)}</b><span>${b.now ? 'adesso' : 'dalle ' + esc(b.from)}</span><em>${b.pct}% sole</em></div>`).join('')}</div>` : '';
+    return `<section class="card" aria-label="Piano della giornata"><div class="row sp"><span class="lab">Piano della giornata</span><span class="chip">${P.hasFc ? 'previsione' : 'stima'}</span></div>
+      ${svgc}<div class="leg"><span><i class="l1"></i>previsto</span><span><i class="l2"></i>prodotto</span>${P.soc !== null ? '<span><i class="l3"></i>batteria</span>' : ''}</div>
+      <div class="tiles3">${lines.join('')}</div>${best}
+      <span class="foot">Il consumo della casa a riposo lo ricavo da quanto scarica la batteria quando il sole non c'è.</span></section>`;
+  }
+
+  // ================================================================ 1.0 · citofono e campanello
+  _bells() {
+    const S = this._hass.states, n = Object.keys(S).length;
+    if (this._bellL && this._bellL.n === n) return this._bellL.v;
+    const c = this._config, out = [...((c.doorbells || []).map(b => ({ ...b })))];
+    for (const id in S) {
+      if (out.some(b => b.ding === id)) continue;
+      const a = S[id].attributes || {};
+      // campanelli e citofoni: eventi "doorbell" o che finiscono in _ding (non "intercom_unlock", che è l'apertura)
+      if ((id.startsWith('event.') && (a.device_class === 'doorbell' || /_ding$/.test(id)) && !/unlock/.test(id)) || (id.startsWith('binary_sensor.') && /_ding$/.test(id)))
+        out.push({ ding: id, name: String(a.friendly_name || id.split('.')[1]).replace(/[\s_]*(ding|doorbell|campanello)$/i, '').replace(/_/g, ' ') });
+    }
+    const cams = (c.security && c.security.cameras) || [];
+    out.forEach(b => {
+      if (b.camera === 'auto') b.camera = Object.keys(S).find(k => k.startsWith('camera.') && /(cancell|intercom|citofon)/.test(k) && !/map/.test(k)) || ((cams.find(x => /fronte|front/i.test(x.entity)) || {}).entity) || '';
+      if (!b.camera) { const m = cams.find(x => x.ding === b.ding) || (/cancell|intercom|citofon/i.test(b.ding + ' ' + b.name) ? cams.find(x => /fronte|front|cancell/i.test(x.entity)) : null); b.camera = m ? m.entity : ''; }
+      if (!b.where) b.where = /cancell|intercom|citofon/i.test(b.ding + ' ' + b.name) ? 'al cancelletto' : 'alla porta';
+    });
+    this._bellL = { n, v: out };
+    return out;
+  }
+  _ringBoot() {
+    if (this._ringBooted || !this._hass.callWS) return; this._ringBooted = true;
+    const ids = this._bells().map(b => b.ding).filter(id => id.startsWith('binary_sensor.')); if (!ids.length) return;
+    this._hass.callWS({ type: 'logbook/get_events', start_time: new Date(Date.now() - 180000).toISOString(), end_time: new Date().toISOString(), entity_ids: ids })
+      .then(rows => { (rows || []).forEach(r => { if (r.state === 'on') (this._ringAt = this._ringAt || {})[r.entity_id] = r.when * 1000; }); this._ringUpdate(new Date()); }).catch(() => { });
+  }
+  _ringActive(now) {
+    const S = this._hass.states, A = this._ringAt = this._ringAt || {}, seen = this._ringSeen = this._ringSeen || {};
+    let best = null;
+    for (const b of this._bells()) {
+      const s = S[b.ding]; if (!s) continue;
+      let t = null;
+      if (b.ding.startsWith('event.')) { const d = Date.parse(s.state); if (!isNaN(d)) t = d; }
+      else { if (s.state === 'on') A[b.ding] = Date.parse(s.last_changed) || now.getTime(); else if (seen[b.ding] === 'on') A[b.ding] = A[b.ding] || now.getTime(); t = A[b.ding] || null; seen[b.ding] = s.state; }
+      if (t && now - t < 180000 && !(this._ringOff || []).includes(b.ding + '@' + t) && (!best || t > best.t)) best = { ...b, t };
+    }
+    return best;
+  }
+  _ringUpdate(now) {
+    const box = this._ringEl; if (!box || !this._hass) return;
+    const r = this._ringActive(now), key = r ? r.ding + '@' + r.t : '';
+    if (!r) { if (box.dataset.k) { box.hidden = true; box.innerHTML = ''; box.dataset.k = ''; this._ringCam = null; } return; }
+    if (box.dataset.k === key) { const sm = box.querySelector('.rago'); if (sm) sm.textContent = this._ago(new Date(r.t).toISOString(), now); return; }
+    box.dataset.k = key; box.hidden = false;
+    const g = this._config.security && this._config.security.gate;
+    box.innerHTML = `<div class="rh"><span class="rb">${svg('bell', 22, 2)}</span><div class="grow"><b class="disp">Suonano ${esc(r.where)}</b><small>${esc(r.name)} · <span class="rago">${this._ago(new Date(r.t).toISOString(), now)}</span></small></div><button class="ib" data-act="ringx" aria-label="Chiudi">${svg('close', 18, 2.4)}</button></div>
+      ${r.camera ? `<div class="cam"><div class="camv"></div><span class="camlive"><i></i>Live</span></div>` : ''}
+      <div class="racts">${r.camera ? `<button data-act="ringtalk" data-id="${esc(r.camera)}">${svg('mic', 18, 2)}Parla</button>` : ''}${g && g.script ? `<button class="pri" data-act="gate">${svg('gate', 18, 2)}Apri ${esc((g.name || 'cancelletto').toLowerCase())}</button>` : ''}</div>`;
+    this._ringCam = null;
+    if (r.camera) this._helpersReady().then(Hp => {
+      if (box.dataset.k !== key) return;
+      const v = box.querySelector('.camv'); if (!v) return;
+      let el;
+      if (Hp) { el = Hp.createCardElement({ type: 'picture-entity', entity: r.camera, camera_view: 'live', show_name: false, show_state: false, tap_action: { action: 'more-info' } }); el.hass = this._hass; this._ringCam = el; }
+      else { el = document.createElement('img'); el.className = 'camimg'; el.src = this._st(r.camera)?.attributes?.entity_picture || ''; }
+      v.appendChild(el);
+    });
+    try { this._app.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { }
+  }
+
+  // ================================================================ 1.0 · diario di oggi
+  _diaryIds() {
+    const c = this._config, S = this._hass.states, ids = new Set();
+    (c.people || []).forEach(p => ids.add(p.entity));
+    [c.alarm, c.lock, c.security && c.security.gate && c.security.gate.lock].forEach(x => x && ids.add(x));
+    this._bells().forEach(b => ids.add(b.ding));
+    (c.devices || []).forEach(d => { if (d.entity) ids.add(d.entity); if (d.status) ids.add(d.status); });
+    (c.windows || []).forEach(w => ids.add(w.entity));
+    Object.values(c.scenes || {}).forEach(s => { if (s && s.target && /^(script|scene)\./.test(s.target)) ids.add(s.target); });
+    return [...ids].filter(id => id && S[id]).sort();
+  }
+  _diaryItems() {
+    const ids = this._diaryIds(), day0 = new Date(); day0.setHours(0, 0, 0, 0);
+    const e = this._ws('diary:' + day0.getDate() + ':' + ids.length, 60000, () => ({ type: 'logbook/get_events', start_time: day0.toISOString(), end_time: new Date().toISOString(), entity_ids: ids }));
+    if (!e.data) return { loading: !e.err, err: e.err, items: [] };
+    if (e.proc && e.proc.ts === e.ts) return e.proc.v;
+    const c = this._config, items = [], last = {}, gap = {};
+    const person = id => (c.people || []).find(p => p.entity === id);
+    const dev = id => (c.devices || []).find(d => d.entity === id || d.status === id);
+    const bell = id => this._bells().find(b => b.ding === id);
+    const win = id => (c.windows || []).find(w => w.entity === id);
+    const sc = id => Object.values(c.scenes || {}).find(s => s && s.target === id);
+    const ALT = { armed_home: 'in casa', armed_away: 'fuori casa', armed_night: 'notte', armed_vacation: 'vacanza' };
+    for (const r of (Array.isArray(e.data) ? e.data : []).slice().sort((a, b) => a.when - b.when)) {
+      const id = r.entity_id, st = r.state; if (!id || st === undefined) continue;
+      if (BAD.test(st)) { gap[id] = true; continue; }
+      const dom = id.split('.')[0]; let t = null, ic = 'pin', hot = false;
+      // 1.1.2 · l'integrazione si è ricollegata (non disponibile -> stesso stato di prima): non è successo niente
+      const back = gap[id]; gap[id] = false;
+      if (back && dom !== 'event' && dom !== 'scene' && (last[id] === undefined || last[id] === st)) { last[id] = st; continue; }
+      // eventi e scene hanno come stato l'ora in cui sono avvenuti: valgono solo se quell'ora è adesso (non un vecchio valore ripristinato)
+      const fresh = () => { const ts = Date.parse(st) / 1000; return !isNaN(ts) && Math.abs(ts - r.when) < 120; };
+      const p = person(id), d = dev(id), b = bell(id), w = win(id), s = sc(id);
+      if (p) { if (st === 'home') { t = `${p.name} rientra a casa`; ic = 'enter'; } else if (last[id] === 'home' || last[id] === undefined) { t = `${p.name} esce${st !== 'not_home' ? ' · ' + st : ''}`; ic = 'exit'; } }
+      else if (dom === 'alarm_control_panel') { t = st === 'disarmed' ? 'Allarme disinserito' : st === 'triggered' ? 'ALLARME SCATTATO' : ALT[st] ? 'Allarme inserito · ' + ALT[st] : null; ic = st === 'disarmed' ? 'shieldoff' : 'sicurezza'; hot = st === 'triggered'; }
+      else if (b) { if (dom === 'event' ? fresh() : st === 'on') { t = `Hanno suonato ${b.where}`; ic = 'bell'; hot = true; } }
+      else if (dom === 'lock') { const nm = id === c.lock ? 'Portone' : (c.security.gate && id === c.security.gate.lock ? (c.security.gate.name || 'Cancelletto') : this._fname(id)); t = st === 'locked' ? nm + ' chiuso a chiave' : st === 'unlocked' || st === 'open' ? nm + ' aperto' : null; ic = st === 'locked' ? 'lock' : 'unlock'; }
+      else if (w) { t = st === 'on' ? `Finestra ${w.name.toLowerCase()} aperta` : st === 'off' && last[id] === 'on' ? `Finestra ${w.name.toLowerCase()} chiusa` : null; ic = 'window'; }
+      else if (s) { if (dom === 'scene' ? fresh() : st === 'on') { t = `Scena «${s.name}»`; ic = 'play'; } }
+      else if (d) {
+        const run = /^(cleaning|mowing|run|running|on)$/i.test(st) || (d.type === 'washer' && /run/i.test(st)), was = last[id] && /^(cleaning|mowing|run|running|on)$/i.test(last[id]);
+        if (run && !was) { t = d.type === 'washer' ? 'Lavatrice parte' : d.type === 'oven' ? 'Forno acceso' : d.type === 'hob' ? 'Piano cottura acceso' : d.type === 'dishwasher' ? 'Lavastoviglie parte' : `${d.name} inizia a ${d.type === 'mower' ? 'tagliare' : 'pulire'}`; ic = d.type === 'washer' ? 'drop' : d.type === 'oven' || d.type === 'hob' ? 'flame' : 'broom'; }
+        else if (!run && was) { t = d.type === 'washer' ? 'Lavatrice finita' : d.type === 'oven' ? 'Forno spento' : d.type === 'hob' ? 'Piano cottura spento' : d.type === 'dishwasher' ? 'Lavastoviglie finita' : `${d.name} ha finito`; ic = 'check'; }
+      }
+      last[id] = st;
+      if (!t) continue;
+      const prev = items[items.length - 1];
+      if (prev && prev.t === t && r.when - prev.when < 300) continue;
+      items.push({ t, ic, hot, when: r.when, id });
+    }
+    const v = { items: items.reverse(), loading: false };
+    e.proc = { ts: e.ts, v };
+    return v;
+  }
+  _diaryCard(now, n = 3) {
+    const D = this._diaryItems(); if (!D.items.length) return '';
+    return `<section class="card diary" aria-label="Oggi in casa"><div class="row sp"><span class="lab">Oggi in casa</span><button class="link" data-act="diary">Tutto il diario</button></div>
+      ${D.items.slice(0, n).map(i => `<div class="drow${i.hot ? ' hot' : ''}"><span class="di">${svg(i.ic, 16, 2)}</span><span class="grow">${esc(i.t)}</span><small>${hhmm(new Date(i.when * 1000))}</small></div>`).join('')}</section>`;
+  }
+  _renderDiario(now) {
+    const D = this._diaryItems(), c = this._config, bt = this._batt();
+    this._set('u_head', this._subHead('Diario', D.items.length ? `${D.items.length} ${D.items.length === 1 ? 'cosa' : 'cose'} oggi.` : 'Oggi in casa', cap(now.toLocaleDateString(i18nLoc(), { weekday: 'long', day: 'numeric', month: 'long' }))));
+    const prod = this._kwh(c.pv_today), out = D.items.filter(i => i.ic === 'exit').length, ring = D.items.filter(i => i.ic === 'bell').length;
+    const tiles = `<div class="tiles3"><div><span>Dal sole</span><b>${isNaN(prod) ? '—' : nf(prod, 1) + ' kWh'}</b></div><div><span>Batteria</span><b>${isNaN(bt.soc) ? '—' : Math.round(bt.soc) + '%'}</b></div><div><span>${ring ? 'Campanello' : 'Uscite'}</span><b>${ring || out}</b></div></div>`;
+    if (!D.items.length) { this._set('u_main', `<section class="card">${tiles}<p class="mut" style="margin:0">${D.loading ? 'Leggo il registro di oggi…' : D.err ? 'Registro non disponibile' : 'Ancora niente di nuovo oggi.'}</p></section>`); return; }
+    const parts = [['Sera', 18], ['Pomeriggio', 13], ['Mattina', 5], ['Notte', 0]];
+    const grp = {}; D.items.forEach(i => { const hh = new Date(i.when * 1000).getHours(); const g = parts.find(p => hh >= p[1])[0]; (grp[g] = grp[g] || []).push(i); });
+    const lastBell = D.items.find(i => i.ic === 'bell'), bl = lastBell && this._bells().find(b => b.ding === lastBell.id), cam = bl && bl.camera ? this._st(bl.camera) : null, pic = cam && !BAD.test(cam.state) ? cam.attributes.entity_picture : '';
+    this._set('u_main', `<section class="card">${tiles}</section>${parts.filter(p => grp[p[0]]).map(([g]) => `<section class="card" style="gap:0;padding:6px 18px"><span class="lab" style="padding:10px 0 4px">${g}</span>
+      ${grp[g].map(i => `<div class="drow${i.hot ? ' hot' : ''}"><span class="di">${svg(i.ic, 16, 2)}</span><span class="grow">${esc(i.t)}${i === lastBell && pic ? `<img class="dpic" src="${esc(pic)}" alt="" data-act="more" data-id="${esc(bl.camera)}">` : ''}</span><small>${hhmm(new Date(i.when * 1000))}</small></div>`).join('')}</section>`).join('')}`);
+  }
+
+  // ================================================================ 1.0 · Assist dentro Isola
+  _asstOpen() {
+    if (this._asst) return;
+    const box = document.createElement('div'); box.className = 'asst';
+    box.innerHTML = `<div class="ab" role="dialog" aria-label="Parla con la casa">
+      <div class="ah"><b class="disp">Parla con la casa</b><button class="ib" data-act="asstx" aria-label="Chiudi">${svg('close', 18, 2.4)}</button></div>
+      <div class="al" aria-live="polite"></div><div class="aq"></div>
+      <form class="af"><input type="text" placeholder="Scrivi, oppure tocca il microfono" enterkeyhint="send" autocomplete="off" aria-label="Scrivi alla casa"><button type="button" class="amic" data-act="asstmic" aria-label="Parla">${svg('mic', 22, 2)}</button></form>
+      <div class="ax"><button type="button" data-act="asstvoice"></button><button type="button" data-act="asstclassic">Assist classico</button></div></div>`;
+    box.addEventListener('click', ev => { if (ev.target === box) this._asstClose(); });
+    box.querySelector('form').addEventListener('submit', ev => { ev.preventDefault(); const i = box.querySelector('input'); const t = i.value; i.value = ''; this._asstText(t); });
+    this._app.appendChild(box); this._asst = box;
+    this._asstMsgs = this._asstMsgs && Date.now() - (this._asstAt || 0) < 300000 ? this._asstMsgs : [];
+    this._asstDraw();
+    if (!this._asstPipe && this._hass.callWS) this._hass.callWS({ type: 'assist_pipeline/pipeline/list' }).then(r => { const P = (r && r.pipelines) || []; this._asstPipe = P.find(p => p.id === r.preferred_pipeline) || P[0] || null; this._asstDraw(); }).catch(() => { this._asstPipe = null; });
+  }
+  _asstClose() { this._asstMicStop(); if (this._asst) this._asst.remove(); this._asst = null; }
+  _asstVoiceOn() { try { return localStorage.getItem('isola_asst_voice') !== '0'; } catch (e) { return true; } }
+  _asstChips() { return ['Che tempo fa?', 'Spegni tutte le luci', 'Che ore sono?']; }
+  _asstDraw() {
+    const box = this._asst; if (!box) return;
+    const L = box.querySelector('.al'), M = this._asstMsgs || [];
+    L.innerHTML = M.length ? M.map(m => `<div class="am ${m.who}${m.kind ? ' ' + m.kind : ''}"${m.who === 'me' || m.raw ? ' data-noi18n' : ''}>${esc(m.text)}${m.chips && m.chips.length ? `<span class="amc">${m.chips.map(x => `<i>${esc(x)}</i>`).join('')}</span>` : ''}</div>`).join('')
+      : `<div class="am casa">Ciao! Chiedimi qualcosa o dimmi cosa fare. Uso le stesse frasi di Assist${this._asstPipe ? ' (' + esc(this._asstPipe.name) + ')' : ''}.</div>`;
+    L.scrollTop = L.scrollHeight;
+    box.querySelector('.aq').innerHTML = this._asstChips().map(t => `<button type="button" data-act="asstq" data-t="${esc(t)}">${esc(t)}</button>`).join('');
+    const mic = box.querySelector('.amic'); mic.classList.toggle('rec', !!this._rec); mic.setAttribute('aria-label', this._rec ? 'Smetti di ascoltare' : 'Parla');
+    box.querySelector('[data-act="asstvoice"]').textContent = this._asstVoiceOn() ? '🔊 Risposte a voce' : '🔇 Risposte solo scritte';
+  }
+  _asstPush(who, text, kind) { const m = { who, text, kind }; (this._asstMsgs = this._asstMsgs || []).push(m); this._asstAt = Date.now(); this._asstDraw(); return m; }
+  _asstText(text) {
+    text = String(text || '').trim(); if (!text) return;
+    this._asstPush('me', text);
+    const pend = this._asstPush('casa', '…', 'wait');
+    this._asstUnlockAudio();
+    this._asstRun({ text, pend });
+  }
+  _asstAnswer(m, resp, cid) {
+    if (cid) this._asstCid = cid;
+    const sp = resp && resp.speech && resp.speech.plain && resp.speech.plain.speech;
+    m.raw = !!sp;   // testo di Assist: non va tradotto
+    m.text = sp || (resp && resp.response_type === 'action_done' ? 'Fatto.' : 'Non ho una risposta.');
+    m.kind = resp && resp.response_type === 'error' ? 'err' : '';
+    const T = (resp && resp.data && resp.data.success) || []; m.chips = T.map(x => x.name).filter(Boolean).slice(0, 6);
+    this._asstDraw();
+  }
+  // una corsa della pipeline di Assist: testo o voce (16 kHz), risposta scritta e, se attiva, parlata
+  _asstRun(o) {
+    const speak = this._asstVoiceOn();
+    const msg = { type: 'assist_pipeline/run', start_stage: o.rec ? 'stt' : 'intent', end_stage: speak ? 'tts' : 'intent', input: o.rec ? { sample_rate: 16000 } : { text: o.text }, conversation_id: this._asstCid || null };
+    if (this._asstPipe && this._asstPipe.id) msg.pipeline = this._asstPipe.id;
+    let unsub = null, done = false, pend = o.pend;
+    const fin = () => { if (done) return; done = true; clearTimeout(to); if (o.rec) this._asstMicStop(); try { if (unsub) unsub(); } catch (e) { } if (pend && pend.kind === 'wait') { pend.text = 'Nessuna risposta.'; pend.kind = 'err'; this._asstDraw(); } };
+    const to = setTimeout(fin, 45000);
+    const on = ev => {
+      const d = ev.data || {};
+      if (ev.type === 'run-start') { const hid = d.runner_data && d.runner_data.stt_binary_handler_id; if (o.rec) { o.rec.hid = hid; if (o.rec.stop) this._asstAudioEnd(hid); else { o.rec.queue.forEach(ch => this._asstSendAudio(o.rec, ch)); o.rec.queue = []; } } }
+      else if (ev.type === 'stt-vad-end') { if (o.rec) this._asstMicStop(); }
+      else if (ev.type === 'stt-end') { const t = d.stt_output && d.stt_output.text; if (t) { this._asstPush('me', t); pend = this._asstPush('casa', '…', 'wait'); } else { this._asstPush('casa', 'Non ho sentito niente.', 'err'); } }
+      else if (ev.type === 'intent-end') { const io = d.intent_output || {}; if (!pend) pend = this._asstPush('casa', '…', 'wait'); this._asstAnswer(pend, io.response, io.conversation_id); pend = null; if (!speak) fin(); }
+      else if (ev.type === 'tts-end') { const u = d.tts_output && d.tts_output.url; if (u) this._asstPlay(u); fin(); }
+      else if (ev.type === 'run-end') fin();
+      else if (ev.type === 'error') { const t = d.code === 'stt-no-text-recognized' ? 'Non ho capito, riprova.' : 'Assist: ' + (d.message || d.code || 'errore'); if (pend) { pend.text = t; pend.kind = 'err'; this._asstDraw(); pend = null; } else this._asstPush('casa', t, 'err'); fin(); }
+    };
+    this._hass.connection.subscribeMessage(on, msg).then(u => { unsub = u; if (done) u(); }).catch(e => {
+      console.warn('isola: assist', e);
+      if (!o.rec && this._hass.callWS) {   // ripiego: solo testo
+        this._hass.callWS({ type: 'conversation/process', text: o.text, language: this._hass.language || 'it', conversation_id: this._asstCid || undefined })
+          .then(r => { this._asstAnswer(pend || this._asstPush('casa', '…'), r && r.response, r && r.conversation_id); pend = null; fin(); })
+          .catch(() => { fin(); });
+      } else { this._asstPush('casa', 'Assist non risponde: ' + ((e && e.message) || ''), 'err'); fin(); }
+    });
+  }
+  _asstUnlockAudio() {
+    try { if (!this._asstPlayCtx) this._asstPlayCtx = new (window.AudioContext || window.webkitAudioContext)(); if (this._asstPlayCtx.state === 'suspended') this._asstPlayCtx.resume(); } catch (e) { }
+  }
+  async _asstPlay(url) {
+    try {
+      const ctx = this._asstPlayCtx; const full = this._hass.hassUrl ? this._hass.hassUrl(url) : url;
+      if (!ctx) { new Audio(full).play().catch(() => { }); return; }
+      const buf = await (await fetch(full)).arrayBuffer(), au = await new Promise((res, rej) => ctx.decodeAudioData(buf, res, rej));
+      const s = ctx.createBufferSource(); s.buffer = au; s.connect(ctx.destination); s.start();
+    } catch (e) { console.warn('isola: voce', e); }
+  }
+  async _asstMic() {
+    if (this._rec) { this._asstMicStop(); return; }
+    this._asstUnlockAudio();
+    let ctx;
+    try { ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 }); } catch (e) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e2) { ctx = null; } }
+    let stream = null;
+    try { if (!ctx || !navigator.mediaDevices) throw new Error('nessun microfono'); stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
+    catch (e) {
+      try { ctx && ctx.close(); } catch (e2) { }
+      this._toast('Microfono non disponibile qui: apro Assist classico', true);
+      this._fire('hass-action', { config: { tap_action: { action: 'assist', start_listening: true } }, action: 'tap' }); return;
+    }
+    try { await ctx.resume(); } catch (e) { }
+    const src = ctx.createMediaStreamSource(stream), proc = ctx.createScriptProcessor(4096, 1, 1), ratio = ctx.sampleRate / 16000;
+    const rec = this._rec = { stream, ctx, src, proc, hid: null, queue: [], stop: false };
+    proc.onaudioprocess = ev => {
+      if (rec.stop) return;
+      const f = ev.inputBuffer.getChannelData(0), n = Math.floor(f.length / ratio), out = new Int16Array(n);
+      for (let i = 0; i < n; i++) { const v = f[Math.min(f.length - 1, Math.floor(i * ratio))]; out[i] = Math.max(-1, Math.min(1, v)) * 0x7fff; }
+      if (rec.hid === null || rec.hid === undefined) rec.queue.push(out); else this._asstSendAudio(rec, out);
+    };
+    src.connect(proc); proc.connect(ctx.destination);
+    rec.timer = setTimeout(() => this._asstMicStop(), 12000);
+    this._asstDraw();
+    this._asstRun({ rec });
+  }
+  _asstSendAudio(rec, ch) { const d = new Uint8Array(1 + ch.length * 2); d[0] = rec.hid; d.set(new Uint8Array(ch.buffer), 1); try { this._hass.connection.socket.send(d); } catch (e) { } }
+  _asstAudioEnd(hid) { try { this._hass.connection.socket.send(new Uint8Array([hid])); } catch (e) { } }
+  _asstMicStop() {
+    const rec = this._rec; if (!rec) return; this._rec = null; rec.stop = true; clearTimeout(rec.timer);
+    if (rec.hid !== null && rec.hid !== undefined) this._asstAudioEnd(rec.hid);
+    try { rec.proc.disconnect(); rec.src.disconnect(); rec.stream.getTracks().forEach(t => t.stop()); rec.ctx.close(); } catch (e) { }
+    this._asstDraw();
+  }
+
+  // ================================================================ 1.0.4 · calendario di famiglia
+  _calFetch(days) {
+    const c = this._config, L = (c.calendars || []).filter(x => this._st(x.entity));
+    if (!L.length || !this._hass.callApi) return null;
+    const day0 = new Date(); day0.setHours(0, 0, 0, 0);
+    const key = L.map(x => x.entity).join(',') + '|' + day0.toDateString() + '|' + days;
+    const C = this._calC = this._calC || {};
+    let e = C[key];
+    if (!e || (!e.busy && Date.now() - e.ts > 600000)) {
+      e = C[key] = { ...(e || {}), busy: true, ts: Date.now() };
+      const s = day0.toISOString(), en = new Date(day0.getTime() + days * 86400000).toISOString();
+      Promise.all(L.map(x => this._hass.callApi('GET', `calendars/${x.entity}?start=${encodeURIComponent(s)}&end=${encodeURIComponent(en)}`)
+        .then(r => (Array.isArray(r) ? r : []).map(ev => ({ ...this._calNorm(ev), cal: x })))))
+        .then(arr => { e.data = arr.flat().sort((a, b) => a.start - b.start || a.title.localeCompare(b.title)); e.err = null; })
+        .catch(er => { e.err = er; console.warn('isola: calendario', er); })
+        .finally(() => { e.busy = false; e.ts = Date.now(); this._schedule(); });
+    }
+    return e;
+  }
+  _calRefresh() { this._calC = {}; this._schedule(); }
+  _calNorm(ev) {
+    const all = !!(ev.start && ev.start.date && !ev.start.dateTime);
+    const p = v => !v ? new Date(NaN) : v.dateTime ? new Date(v.dateTime) : new Date(v.date + 'T00:00:00');
+    return { title: ev.summary || i18nT('(senza titolo)'), where: ev.location || '', note: ev.description || '', all, start: p(ev.start), end: p(ev.end) };
+  }
+  _calDay(d, now) {
+    const a = new Date(now); a.setHours(0, 0, 0, 0); const b = new Date(d); b.setHours(0, 0, 0, 0);
+    const n = Math.round((b - a) / 86400000);
+    return n === 0 ? 'Oggi' : n === 1 ? 'Domani' : cap(d.toLocaleDateString(i18nLoc(), { weekday: 'long' }));
+  }
+  _calWhen(ev, now) {
+    if (ev.start <= now && ev.end > now) return ev.all ? 'oggi' : 'adesso · fino alle ' + hhmm(ev.end);
+    if (ev.all) { const days = Math.round((ev.end - ev.start) / 86400000); return days > 1 ? `tutto il giorno · ${days} giorni` : 'tutto il giorno'; }
+    return hhmm(ev.start) + (ev.end > ev.start ? '–' + hhmm(ev.end) : '');
+  }
+  _calRow(ev, now, withDay) {
+    const live = ev.start <= now && ev.end > now;
+    return `<div class="crow2${live ? ' live' : ''}"><i style="background:${esc(ev.cal.color || 'var(--sea)')}"></i><span class="grow"><b data-noi18n>${esc(ev.title)}</b><small>${withDay ? esc(this._calDay(ev.start, now)) + ' · ' : ''}${esc(this._calWhen(ev, now))}${ev.where ? ' · <span data-noi18n>' + esc(ev.where) + '</span>' : ''}</small></span></div>`;
+  }
+  _calHtml(now) {
+    const e = this._calFetch(8); if (!e || !e.data) return '';
+    const t2 = new Date(now); t2.setHours(0, 0, 0, 0); t2.setDate(t2.getDate() + 2);
+    const list = e.data.filter(x => x.end > now && x.start < t2).slice(0, 5);
+    const head = `<div class="row sp"><span class="lab">Oggi e domani</span><button class="link" data-act="calopen">Calendario</button></div>`;
+    if (!list.length) return `<section class="card cal">${head}<p class="mut" style="margin:0;font-size:13.5px">Niente in calendario per oggi e domani.</p></section>`;
+    return `<section class="card cal" aria-label="Calendario">${head}${list.map(ev => this._calRow(ev, now, true)).join('')}</section>`;
+  }
+  // una riga per il riepilogo del mattino e della sera
+  _calBrief(mode, now) {
+    const e = this._calFetch(8); if (!e || !e.data) return null;
+    const day = new Date(now); day.setHours(0, 0, 0, 0); if (mode === 'sera' || mode === 'notte') day.setDate(day.getDate() + 1);
+    const end = new Date(day.getTime() + 86400000);
+    const L = e.data.filter(x => x.start < end && x.end > day && (mode === 'mattino' ? x.end > now : true));
+    if (!L.length) return null;
+    const timed = L.filter(x => !x.all), first = timed[0] || L[0], lab = mode === 'mattino' ? 'Oggi' : 'Domani';
+    const t = `${lab}: ${first.title}${first.all ? '' : ' alle ' + hhmm(first.start)}`;
+    return { t, s: L.length === 2 ? 'e un altro impegno' : L.length > 2 ? `e altri ${L.length - 1} impegni` : (first.where || '') };
+  }
+  _renderCalendario(now) {
+    const c = this._config, e = this._calFetch(8), cal = (c.calendars || []).find(x => this._st(x.entity));
+    const canAdd = cal && (+(this._st(cal.entity).attributes.supported_features || 0) & 1);
+    this._set('u_head', this._subHead('Calendario', 'Prossimi 7 giorni', cal ? cal.name || '' : ''));
+    if (!e) { this._set('u_main', '<section class="card"><p class="mut" style="margin:0">Nessun calendario configurato (calendars: nella card).</p></section>'); return; }
+    if (!e.data) { this._set('u_main', `<section class="card"><p class="mut" style="margin:0">${e.err ? 'Il calendario non risponde.' : 'Leggo il calendario…'}</p></section>`); return; }
+    const groups = []; const d0 = new Date(now); d0.setHours(0, 0, 0, 0);
+    for (let i = 0; i < 7; i++) {
+      const a = new Date(d0.getTime() + i * 86400000), b = new Date(a.getTime() + 86400000);
+      const L = e.data.filter(x => x.start < b && x.end > a && x.end > now);
+      if (L.length) groups.push(`<section class="card" style="gap:2px"><span class="lab">${esc(this._calDay(a, now))} · ${esc(a.toLocaleDateString(i18nLoc(), { day: 'numeric', month: 'long' }))}</span>${L.map(ev => this._calRow(ev, now, false)).join('')}</section>`);
+    }
+    this._set('u_main', (canAdd ? `<button class="pbtn" style="align-self:flex-start" data-act="caladd">+ Aggiungi un impegno</button>` : '')
+      + (groups.join('') || '<section class="card"><p class="mut" style="margin:0">Settimana libera: niente in calendario.</p></section>'));
+  }
+  _calAddOpen() {
+    const c = this._config, cal = (c.calendars || []).find(x => this._st(x.entity)); if (!cal || this._calAdd) return;
+    const d = new Date(Date.now() + 3600000); d.setMinutes(0, 0, 0);
+    const pad = n => String(n).padStart(2, '0'), ymd = x => `${x.getFullYear()}-${pad(x.getMonth() + 1)}-${pad(x.getDate())}`;
+    const box = document.createElement('div'); box.className = 'asst';
+    box.innerHTML = `<form class="ab calf" aria-label="Nuovo impegno"><div class="ah"><b class="disp">Nuovo impegno</b><button type="button" class="ib" data-x aria-label="Chiudi">${svg('close', 18, 2.4)}</button></div>
+      <input name="t" placeholder="Cosa (es. Dentista)" required autocomplete="off">
+      <input name="w" placeholder="Dove (facoltativo)" autocomplete="off">
+      <div class="calr"><input name="d" type="date" value="${ymd(d)}" required><label><input name="all" type="checkbox"> Tutto il giorno</label></div>
+      <div class="calr"><input name="s" type="time" value="${pad(d.getHours())}:00"><span>→</span><input name="e" type="time" value="${pad((d.getHours() + 1) % 24)}:00"></div>
+      <button class="pbtn" type="submit">Aggiungi a ${esc(cal.name || 'calendario')}</button></form>`;
+    const close = () => { box.remove(); this._calAdd = null; };
+    box.addEventListener('click', ev => { if (ev.target === box || ev.target.closest('[data-x]')) close(); });
+    box.querySelector('form').addEventListener('submit', ev => {
+      ev.preventDefault(); const f = ev.target, v = n => f.elements[n].value, data = { entity_id: cal.entity, summary: v('t').trim() };
+      if (v('w').trim()) data.location = v('w').trim();
+      if (f.elements.all.checked) { const s = new Date(v('d') + 'T00:00:00'), n2 = new Date(s.getTime() + 86400000); data.start_date = v('d'); data.end_date = ymd(n2); }
+      else { let s = new Date(v('d') + 'T' + (v('s') || '09:00')), en = new Date(v('d') + 'T' + (v('e') || v('s') || '10:00')); if (en <= s) en = new Date(s.getTime() + 3600000); data.start_date_time = v('d') + ' ' + pad(s.getHours()) + ':' + pad(s.getMinutes()) + ':00'; data.end_date_time = ymd(en) + ' ' + pad(en.getHours()) + ':' + pad(en.getMinutes()) + ':00'; }
+      this._hass.callService('calendar', 'create_event', data).then(() => { this._toast('Aggiunto: ' + data.summary); close(); this._calRefresh(); })
+        .catch(er => this._toast('Il calendario non accetta nuovi impegni', true, er));
+    });
+    this._app.appendChild(box); this._calAdd = box; setTimeout(() => box.querySelector('input[name=t]').focus(), 50);
   }
 
   // ---------------------------------------------------------------- azioni
@@ -2317,13 +3253,20 @@ class IsolaCard extends HTMLElement {
     const act = b.dataset.act, c = this._config;
     if (act === 'more') this._fire('hass-more-info', { entityId: b.dataset.id });
     else if (act === 'menu') this._fire('hass-toggle-menu', {});
-    else if (act === 'assist') this._fire('hass-action', { config: { tap_action: { action: 'assist', start_listening: false } }, action: 'tap' });
+    else if (act === 'assist') this._asstOpen();
+    else if (act === 'asstx') this._asstClose();
+    else if (act === 'asstmic') this._asstMic();
+    else if (act === 'asstq') this._asstText(b.textContent.trim());
+    else if (act === 'asstvoice') { try { localStorage.setItem('isola_asst_voice', this._asstVoiceOn() ? '0' : '1'); } catch (er) {} this._asstDraw(); }
+    else if (act === 'asstclassic') { this._asstClose(); this._fire('hass-action', { config: { tap_action: { action: 'assist', start_listening: false } }, action: 'tap' }); }
     else if (act === 'nav') this._goPage(b.dataset.to);
     else if (act === 'page') this._goPage(b.dataset.to);
     else if (act === 'go') this._navigate(b.dataset.to);
     else if (act === 'etab') { this._etab = b.dataset.k; try { localStorage.setItem('isola_etab', this._etab); } catch (er) {} this._schedule(); }
     else if (act === 'pdtab') { this._pdTab = b.dataset.k; this._schedule(); }
     else if (act === 'selm') { this._selM = +b.dataset.k; this._schedule(); }
+    else if (act === 'stripx') { this._stripOpen = !this._stripOpen; this._schedule(); }
+    else if (act === 'nowall') { this._nowAll = !this._nowAll; this._schedule(); }
     else if (act === 'alall') { this._alAll = !this._alAll; this._schedule(); }
     else if (act === 'step') {
       const s = this._st(b.dataset.id); if (!s) return;
@@ -2382,10 +3325,21 @@ class IsolaCard extends HTMLElement {
     else if (act === 'top') this._app.scrollTo({ top: 0, behavior: 'smooth' });
     else if (act === 'live') this._openLive();
     else if (act === 'livex') this._closeLive();
-    else if (act === 'tipx') { try { localStorage.setItem(b.dataset.key, '1'); } catch (er) {} this._cache.tip = null; this._schedule(); }
+    else if (act === 'tipx') { try { localStorage.setItem(b.dataset.key, '1'); } catch (er) {} this._cache.tip = null; this._cache.energy = null; this._schedule(); }
     else if (act === 'scene') this._scene(b.dataset.k);
     else if (act === 'sheetok') { const fn = this._pendingFn, inp = this._slots.overlay.querySelector('input'), code = inp ? inp.value : undefined; this._closeSheet(); if (fn) fn(code); }
     else if (act === 'sheetno') this._closeSheet();
+    else if (act === 'learnyes') { this._learnDo(b.dataset.k); this._cache.learn = null; this._schedule(); }
+    else if (act === 'learnno') { this._learnSnooze(b.dataset.k); this._cache.learn = null; this._schedule(); }
+    else if (act === 'learnnever') { if (this._arm('ln:' + b.dataset.k)) { this._learnSetOff(b.dataset.k, true); this._toast('Non lo chiedo più'); } this._cache.learn = null; this._schedule(); }
+    else if (act === 'learntog') { const on = !this._learnOff().includes(b.dataset.k); this._learnSetOff(b.dataset.k, on); this._schedule(); }
+    else if (act === 'ringx') { const k = this._ringEl && this._ringEl.dataset.k; if (k) (this._ringOff = this._ringOff || []).push(k); this._ringUpdate(new Date()); }
+    else if (act === 'ringtalk') this._fire('hass-more-info', { entityId: b.dataset.id });
+    else if (act === 'diary') this._goSub({ k: 'diario' });
+    else if (act === 'calopen') this._goSub({ k: 'calendario' });
+    else if (act === 'caladd') this._calAddOpen();
+    else if (act === 'lightsoff') { const L = [...new Set(c.rooms.flatMap(r => this._roomParts(r).lights))].filter(id => this._st(id)?.state === 'on'); if (L.length) this._svc('homeassistant', 'turn_off', { entity_id: L }, 'Luci spente'); }
+    else if (act === 'billgo') { this._etab = 'bolletta'; try { localStorage.setItem('isola_etab', 'bolletta'); } catch (er) {} this._goPage('energia'); }
   }
   _change(e) {
     const t = e.target; if (!t || !t.dataset) return;
@@ -2410,17 +3364,18 @@ class IsolaCard extends HTMLElement {
     const v = parseFloat(String(t.value).replace(',', '.')); if (isNaN(v)) return;
     this._hass.callService('input_number', 'set_value', { entity_id: t.dataset.num, value: v }).then(() => this._toast('Salvato')).catch(er => this._toast('Valore non valido', true, er));
   }
+  // termostato del riscaldamento (caldaia, termosifoni): kind: 'heating', oppure heating: climate.xxx, oppure da solo se sa scaldare ma non raffreddare
+  _isHeat(x) {
+    if (!x) return false; if (x.kind) return x.kind === 'heating';
+    const h = this._config.heating; if (h === false) return false; if (typeof h === 'string') return x.entity === h;
+    const m = this._st(x.entity)?.attributes?.hvac_modes || [];
+    return m.includes('heat') && !m.some(v => v === 'cool' || v === 'dry' || v === 'fan_only' || v === 'heat_cool');
+  }
   _colorCtl(s, x) {
     const a = s.attributes, m = a.supported_color_modes || [];
     let h = '';
-    if (m.some(v => /^(hs|xy|rgb|rgbw|rgbww)$/.test(v))) {
-      const hv = a.hs_color ? Math.round(a.hs_color[0]) : 35;
-      h += `<input class="bri hue" type="range" min="0" max="359" value="${hv}" data-hue="${esc(x.entity)}" aria-label="Colore ${esc(x.name)}">`;
-    }
-    if (m.includes('color_temp')) {
-      const lo = a.min_color_temp_kelvin || 2000, hi = a.max_color_temp_kelvin || 6500, kv = a.color_temp_kelvin || Math.round((lo + hi) / 2);
-      h += `<input class="bri ct" type="range" min="${lo}" max="${hi}" step="50" value="${kv}" data-ct="${esc(x.entity)}" aria-label="Bianco ${esc(x.name)}">`;
-    }
+    if (m.some(v => /^(hs|xy|rgb|rgbw|rgbww)$/.test(v))) h += `<input class="bri hue" type="range" min="0" max="359" value="${a.hs_color ? Math.round(a.hs_color[0]) : 35}" data-hue="${esc(x.entity)}" aria-label="Colore ${esc(x.name)}">`;
+    if (m.includes('color_temp')) { const lo = a.min_color_temp_kelvin || 2000, hi = a.max_color_temp_kelvin || 6500; h += `<input class="bri ct" type="range" min="${lo}" max="${hi}" step="50" value="${a.color_temp_kelvin || Math.round((lo + hi) / 2)}" data-ct="${esc(x.entity)}" aria-label="Bianco ${esc(x.name)}">`; }
     return h;
   }
   _briDone() { clearTimeout(this._briT); this._briWant = null; this._briDrag = null; this._cache = {}; this._schedule(true); }

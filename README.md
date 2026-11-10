@@ -2,6 +2,8 @@
 
 <p align="center"><img src="docs/hero.jpg" alt="Isola su tablet e smartphone" width="100%"></p>
 
+<p align="center"><img src="docs/icon.png" alt="Isola" width="96" height="96"></p>
+
 <h1 align="center">Isola per Home Assistant</h1>
 
 <p align="center">
@@ -41,15 +43,20 @@ Da Isola si apre Isola Live con un tocco: la stessa casa, su qualsiasi schermo.
 
 ### Cosa fa
 
-- **Casa:** una frase che riassume la casa, persone con stato e batteria del telefono, meteo, scorciatoia a Isola Live, avvisi e consigli.
-- **Energia:** flusso sole → casa → batteria → rete in tempo reale, consumi dei dispositivi, produzione di oggi, bolletta e storico.
+- **Casa:** una frase che riassume la casa e una pagina sempre nello stesso ordine: persone e meteo in una riga (al tocco si aprono le schede complete), il **calendario** di oggi e domani, i dispositivi in funzione, il sole, le scene, le stanze e **Oggi in casa**.
+- **Oggi in casa:** solo cose vere e che valgono in quel momento. Portone, allarme e luci compaiono se in casa non c'è nessuno (di notte: portone e finestre); sotto, cosa è successo oggi.
+- **Calendario:** gli impegni di oggi e domani dai calendari di Home Assistant, con la raccolta differenziata se la configuri; i prossimi 7 giorni e l'aggiunta di un impegno in un tocco.
+- **La casa che impara:** guarda le ultime quattro settimane e propone quello che fate di solito a quell'ora ("Di solito verso le 19:40 accendi la lampada del divano."). Propone soltanto: decidi tu con un tocco, e ogni abitudine si può spegnere.
+- **Diario:** chi è uscito e rientrato, campanello, serrature, allarme, robot e lavatrice, ora per ora. Se un'integrazione si scollega e si ricollega non compaiono eventi finti.
+- **Parla con la casa:** Assist dentro Isola, scritto o a voce, con le risposte lette ad alta voce se vuoi.
+- **Energia:** flusso sole → casa → batteria → rete in tempo reale, consumi dei dispositivi, produzione di oggi, bolletta e storico. Il **piano della giornata** mostra il sole previsto, fino a che ora basta la batteria e quando conviene avviare lavatrice e lavastoviglie.
 - **Sicurezza:** allarme in un tocco, telecamere, porte e finestre aperte, serrature.
-- **Stanze:** ogni area di Home Assistant diventa una stanza con il suo ritaglio della foto, luci (con regolazione dell'intensità), clima, TV e dispositivi.
+- **Stanze:** ogni area di Home Assistant diventa una stanza con il suo ritaglio della foto, luci (con regolazione dell'intensità), clima, TV e dispositivi. Il termostato del riscaldamento è riconosciuto da solo, con **Manuale** e **Programma**.
 - **Robot ed elettrodomestici:** aspirapolvere, tagliaerba e lavatrice compaiono quando lavorano, con avanzamento e comandi.
 - **Isola Live:** luci realistiche per stanza, ciclo giorno/notte dal sole vero, robot in movimento, presenze, fotovoltaico, modalità quadro notturna, schermo intero per tablet.
 - **Configuratore visivo:** luci, stanze, robot e sensori si mettono sulla foto con un dito e si salvano nella dashboard, senza scrivere YAML.
 - **Luci a colori:** sotto la luminosità, il cursore del colore e quello del bianco (caldo → freddo) quando la lampadina li supporta.
-- **Campanello:** quando suonano, Isola Live apre la telecamera dal vivo con **Parla** (l'audio a due vie della finestra della telecamera) e **Chiudi**.
+- **Campanello:** quando suonano, Isola Live apre la telecamera dal vivo con **Parla** (l'audio a due vie della finestra della telecamera) e **Chiudi**; sul telefono compare in cima la scheda **Suonano** con la telecamera.
 - **Energia senza configurare:** se hai indicato i sensori di potenza nel cruscotto Energia di Home Assistant, Isola usa quelli.
 - **Pronta in un tocco:** la dashboard **Isola** compare tra quelle da creare, Isola Live tra le sezioni della community, e le card hanno l'editor visivo.
 
@@ -285,7 +292,11 @@ Tutto quello che scrivi nella card ha la precedenza su ciò che Isola trova da s
 | `battery_soc` / `battery_power` | `sensor.batteria_livello` | Batteria di casa: livello (%) e potenza |
 | `battery_invert` | `true` | Se la tua batteria segna la carica come negativa |
 | `scenes` | vedi sotto | Pulsanti scena (Esco, Notte, …) |
-| `waste` | `{ today: sensor.raccolta_oggi, tomorrow: sensor.raccolta_domani, from: 17, to: 20 }` | Promemoria della raccolta differenziata |
+| `waste` | `{ today: sensor.raccolta_oggi, tomorrow: sensor.raccolta_domani, from: 17, to: 20 }` | Raccolta differenziata nel calendario della Home (i due sensori dicono cosa si espone oggi e domani) |
+| `calendars` | `[{ entity: calendar.famiglia, name: Famiglia, color: '#5ED3C3' }]` | Calendari da mostrare (se non lo scrivi: tutti quelli di Home Assistant) |
+| `learn` | `false` oppure `{ days: 28 }` | La casa che impara: spenta, oppure quanti giorni guardare |
+| `doorbells` | `[{ ding: event.porta_ding, camera: camera.porta, name: Porta }]` | Campanelli e citofoni (li trova da sola; `false` spegne la scheda) |
+| `heating` | `climate.termostato` | Termostato del riscaldamento, se Isola non lo riconosce da sola (`false` per non distinguerlo) |
 | `casa_live` | stessa configurazione di Isola Live | Mappa che si apre dal telefono |
 | `auto` | `false` | Spegne la configurazione automatica |
 | `language` | `auto` / `it` / `en` | Lingua: segue Home Assistant (italiano, oppure inglese per tutte le altre lingue) |

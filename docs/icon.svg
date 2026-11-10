@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1B2329"/><stop offset="1" stop-color="#0D1114"/></linearGradient>
+    <linearGradient id="sea" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5ED3C3"/><stop offset="1" stop-color="#3FAFA1"/></linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#F5B544" stop-opacity=".35"/><stop offset="1" stop-color="#F5B544" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <circle cx="338" cy="176" r="120" fill="url(#glow)"/>
+  <circle cx="338" cy="176" r="54" fill="#F5B544"/>
+  <!-- casa -->
+  <path d="M132 318 V236 L218 168 L304 236 V318" fill="none" stroke="#F3EFE7" stroke-width="26" stroke-linejoin="round" stroke-linecap="round"/>
+  <rect x="196" y="262" width="44" height="56" rx="8" fill="#F5B544"/>
+  <!-- isola e mare -->
+  <path d="M84 340 Q256 300 428 340" fill="none" stroke="#F3EFE7" stroke-width="22" stroke-linecap="round" opacity=".9"/>
+  <path d="M92 392 q41 -26 82 0 t82 0 t82 0 t82 0" fill="none" stroke="url(#sea)" stroke-width="22" stroke-linecap="round"/>
+  <path d="M132 438 q31 -18 62 0 t62 0 t62 0 t62 0" fill="none" stroke="url(#sea)" stroke-width="18" stroke-linecap="round" opacity=".55"/>
+</svg>
